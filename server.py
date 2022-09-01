@@ -77,7 +77,7 @@ async def counter(websocket, path):
                 STATE["x"] = data["x"]
                 STATE["y"] = data["y"]
                 await notify_touch()
-            elif data["event"] == "usb":
+            elif data["event"] == "xy":
                 STATE["x"] = data["x"]
                 STATE["y"] = data["y"]
                 await notify_xy()

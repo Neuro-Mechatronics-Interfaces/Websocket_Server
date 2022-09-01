@@ -9,7 +9,6 @@ import serial
 
 IP = '128.2.244.29'
 PORT = 6789
-data = {'x': 0, 'y': 0}
 
 async def publisher():
     uri = f'ws://{IP}:{PORT}'
@@ -19,9 +18,7 @@ async def publisher():
                 line = ser.readline()
                 if line:
                     x, y = line.split(',')
-                    data['x'] = int(x)
-                    data['y'] = int(y)
-                    await websocket.send(json.dumps(**data))
+                    await websocket.send(json.dumps({'event': 'xy', 'x': int(x), 'y': int(y)}))
 
 asyncio.get_event_loop().run_until_complete(publisher())
 
