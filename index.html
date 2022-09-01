@@ -79,6 +79,9 @@
                     case 'touch':
                         x.textContent = data.x.toString()
                         y.textContent = data.y.toString()
+					case 'xy':
+                        x.textContent = data.x.toString()
+                        y.textContent = data.y.toString()
                     default:
                         console.error(
                             "unsupported event", data);
