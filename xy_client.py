@@ -12,6 +12,7 @@ PORT = 6789
 data = {'x': 0, 'y': 0}
 
 async def publisher():
+    uri = f'ws://{IP}:{PORT}'
     async with websockets.connect(uri) as websocket:
         with serial.Serial('/dev/ttyUSB0', 9600, timeout=1) as ser:
             while True:
