@@ -14,6 +14,7 @@ STATE = {"value": 0,
          "y": 0}
 
 USERS = set()
+LAST = ""
 
 IP = '128.2.244.29'
 PORT = 6789
@@ -22,7 +23,7 @@ def state_event():
     return json.dumps({"type": "state", "value": STATE["value"]})
 
 def users_event():
-    return json.dumps({"type": "users", "count": len(USERS)})
+    return json.dumps({"type": "users", "count": len(USERS), "last": LAST})
 
 def touch_event():
     return json.dumps({"type": "touch", "x": STATE["x"], "y": STATE["y"]})
@@ -52,6 +53,7 @@ async def notify_touch():
 
 async def register(websocket):
     USERS.add(websocket)
+    LAST = websocket
     await notify_users()
 
 

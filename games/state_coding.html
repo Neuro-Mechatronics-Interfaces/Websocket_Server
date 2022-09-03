@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <!-- <script src="../js/plotly-latest.min.js"></script> -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+        integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="stylesheet" href="../css/main.css">
+    <title>Wrist Center-Out</title>
+</head>
+
+<body>
+    <div class="topnav">
+        <span class="users">0 Clients</span>
+        <span class="subject">Spencer</span>
+        <span class="orientation">MID</span>
+        <span class="trials">0/0</span>
+    </div>
+    <h1>Center Out</h1>
+    <div class="centered">
+        <button type="button" class="btn btn-secondary" id="modeButton" onclick="toggleMode()">Jitter</button>
+        <button type="button" class="btn btn-outline-success" id="startButton"
+            onclick="startSession()">Start</button>
+        <button type="button" class="btn btn-danger" id="endButton" onclick="endSession()">End</button>
+        <button type="button" class="btn btn-warning" id="resetButton" onclick="resetData()">Reset</button>
+        <button type="button" class="btn btn-dark" id="saveButton" style="visibility:hidden"
+            onclick="saveData()">Save CSV Data</button>
+    </div>
+    <main>
+        <div class="content">
+            <canvas id="task"></canvas>
+        </div>
+        
+    </main>
+    <script defer src="../js/state_coding.js"></script>
+</body>
+
+
+
+</html>
