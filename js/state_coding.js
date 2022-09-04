@@ -20,15 +20,30 @@ const tx = new Array(8),
   ty = new Array(8),
   ttheta = new Array(8);
 
-var BoxWidth, BoxHeight;
+const coeffs = butter(0.2, 1.0);
+var updated_target_index = 0;
+
+var BoxWidth, BoxHeight,
+    users = document.querySelector('.users'),
+    canvas = document.querySelector('.task'), 
+    trials = document.querySelector('.trials'),
+    orientation = document.querySelector('.orientation');
 
 // Create global state and data variables
 var state = initState();
 var data = initData();
+const history = {
+    x: new Array(30).fill(BoxWidth), 
+    y: new Array(30).fill(BoxHeight)
+};
+// console.log(history);
 state.canvas.width = BoxWidth*2;
 state.canvas.height = BoxHeight*2;
 
 const modeButton = document.getElementById("modeButton");
+const saveButton = document.getElementById("saveButton");
+const startButton = document.getElementById("startButton").classList = "btn btn-success";
+const endButton = document.getElementById("endButton").classList = "btn btn-outline-danger";
 const context = state.canvas.getContext("2d");
 
 // Precompute target positions
@@ -37,7 +52,6 @@ function initPositions(w, h) {
     ttheta[i] = (i * Math.PI) / 4;
     tx[i] = w + TargetRingRadius * Math.cos(ttheta[i]);
     ty[i] = h + TargetRingRadius * Math.sin(ttheta[i]);
-    // console.log("tx[",i,"]:",tx[i]," | ty[",i,"]:",ty[i]);
   }
 }
 
@@ -49,9 +63,10 @@ function initState() {
   return {
     running: false,
     taskMode: document.getElementById("modeButton").innerText,
-    taskState: null,
-    trialType: null,
+    taskState: "idle",
+    trialType: "baseline",
     numTrials: 0,
+    numSuccessful: 0, 
     trialStart: null,
     targetStart: null,
     direction: "out",
@@ -98,12 +113,14 @@ function toggleMode() {
 
 // Does the reset
 function resetData() {
-  state.taskState = null;
-  state.trialType = null;
+  state.taskState = "idle";
+  state.trialType = "baseline";
   state.numTrials = 0;
+  state.numSuccessful = 0;
   state.trialStart = null;
   data = initData();
-  document.getElementById("saveButton").style.visibility = "hidden";
+  saveButton.style.visibility = "hidden";
+
   baseGraphics("black", false);
   if (state.running) {
     state.running = false;
@@ -115,9 +132,9 @@ function resetData() {
 function startSession() {
   resetData();
   modeButton.disabled = true;
-  document.getElementById("startButton").classList = "btn btn-success";
-  document.getElementById("endButton").classList = "btn btn-outline-danger";
-  addMouseEvents();
+  startButton.classList = "btn btn-success";
+  endButton.classList = "btn btn-outline-danger";
+//   addMouseEvents();
   state.canvas.style.cursor = "none";
   state.running = true;
   newTrial();
@@ -128,17 +145,20 @@ function endSession() {
   state.taskState = "done";
   state.running = false;
   modeButton.disabled = false;
-  document.getElementById("saveButton").style.visibility = "visible";
-  document.getElementById("startButton").classList = "btn btn-outline-success";
-  document.getElementById("endButton").classList = "btn btn-danger";
-  removeMouseEvents();
+  saveButton.style.visibility = "visible";
+  startButton.classList = "btn btn-outline-success";
+  endButton.classList = "btn btn-danger";
+//   removeMouseEvents();
   state = initState(); // reset the state
 }
 
 // Begin a new trial
 function newTrial() {
   if (state.direction === "out") {
-    state.target = getRandomTargetIndex();
+    console.log(updated_target_index);
+    state.target = updated_target_index;
+  } else {
+    websocket.send(JSON.stringify({event: 'get_tgt'}));
   }
   if (state.numTrials > BaselineTrials + PerturbationTrials + WashoutTrials) {
     endSession(); // If too many trials, end the session.
@@ -167,8 +187,9 @@ function endTrial() {
   } else {
     state.direction = "out";
   }
-  console.log(state.direction);
+//   console.log(state.direction);
   state.numTrials += 1;
+  trials.innerText = `${state.numSuccessful}/${state.numTrials}`
   newTrial();
 }
 
@@ -267,24 +288,6 @@ function targetCheck(x, y) {
   }
 }
 
-function addMouseEvents() {
-  // Mouse move handler
-  state.canvas.addEventListener("mousemove", mouseMovement);
-}
-
-function removeMouseEvents() {
-  state.canvas.removeEventListener("mousemove", mouseMovement);
-}
-
-function mouseMovement(e) {
-  if (state.running == false) {
-    removeMouseEvents();
-    return;
-  }
-  cart = { x: e.offsetX, y: e.offsetY };
-  handleState(state.taskState, cart);
-}
-
 // State machine
 function handleState(s, h) {
   // Current state options:
@@ -318,6 +321,9 @@ function handleState(s, h) {
 //   console.log(c);
 
     console.log(s);
+  if (s === "idle") {
+    return;
+  }
   if (s === "pre") {
     // 1
     if (startCheck(h.x, h.y)) {
@@ -406,6 +412,7 @@ function handleState(s, h) {
     }
   } else if (s === "success") {
     // 7 : (Transition) Trial completed successfully.
+    state.numSuccessful += 1;
     endTrial();
     return;
   } else {
@@ -469,6 +476,7 @@ function saveData() {
   link.setAttribute("download", "state_data.csv");
   document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
 }
 
 // * * * HELPER FUNCTIONS * * * //
@@ -490,6 +498,11 @@ function deg2rad(degrees) {
 // Helper to compute l2 norm (euclidean distance) of a vector
 function l2norm(dx, dy) {
   return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+}
+
+// Maps value x from range A to range B.
+function linearMap(x, a1, a2, b1, b2) {
+    return b1 + (x - a1) * (b2 - b1) / (a2 - a1);
 }
 
 // Helper to return radius with respect to center of canvas
@@ -529,27 +542,144 @@ function getTimeSince(d0) {
   return getCurrentTime() - d0;
 }
 
+function calcBiquad(type, Fc, Fs, Q, peakGain) {
+	var a0,a1,a2,b1,b2,norm;
+	if (Fc > (Fs / 2)) {
+        console.error("Fc must be lower than Fs/2.");
+        return;
+    }
+	var V = Math.pow(10, Math.abs(peakGain) / 20);
+	var K = Math.tan(Math.PI * (Fc / (Fs / 2)));
+	switch (type) {
+        case "lowpass":
+			norm = 1 / (1 + K / Q + K * K);
+			a0 = K * K * norm;
+			a1 = 2 * a0;
+			a2 = a0;
+			b1 = 2 * (K * K - 1) * norm;
+			b2 = (1 - K / Q + K * K) * norm;
+			break;
+
+		case "highpass":
+			norm = 1 / (1 + K / Q + K * K);
+			a0 = 1 * norm;
+			a1 = -2 * a0;
+			a2 = a0;
+			b1 = 2 * (K * K - 1) * norm;
+			b2 = (1 - K / Q + K * K) * norm;
+			break;
+		
+		case "bandpass":
+			norm = 1 / (1 + K / Q + K * K);
+			a0 = K / Q * norm;
+			a1 = 0;
+			a2 = -a0;
+			b1 = 2 * (K * K - 1) * norm;
+			b2 = (1 - K / Q + K * K) * norm;
+			break;
+		
+		case "notch":
+			norm = 1 / (1 + K / Q + K * K);
+			a0 = (1 + K * K) * norm;
+			a1 = 2 * (K * K - 1) * norm;
+			a2 = a0;
+			b1 = a1;
+			b2 = (1 - K / Q + K * K) * norm;
+			break;
+		
+		case "peak":
+			if (peakGain >= 0) {
+				norm = 1 / (1 + 1/Q * K + K * K);
+				a0 = (1 + V/Q * K + K * K) * norm;
+				a1 = 2 * (K * K - 1) * norm;
+				a2 = (1 - V/Q * K + K * K) * norm;
+				b1 = a1;
+				b2 = (1 - 1/Q * K + K * K) * norm;
+			}
+			else {	
+				norm = 1 / (1 + V/Q * K + K * K);
+				a0 = (1 + 1/Q * K + K * K) * norm;
+				a1 = 2 * (K * K - 1) * norm;
+				a2 = (1 - 1/Q * K + K * K) * norm;
+				b1 = a1;
+				b2 = (1 - V/Q * K + K * K) * norm;
+			}
+			break;
+    }
+    return {b: [1.0, b1, b2], a: [a0, a1, a2]};
+}
+
+function butter(fc, fs) {
+    let coeffs = calcBiquad("lowpass", fc, fs, 0.7071, 6);
+    // console.log(coeffs);
+    return coeffs; 
+}
+
+function filter(b, a, x) {
+    // console.log("b: ", b);
+    // console.log("a: ", a);
+    let n = x.length;
+    let z = new Array(n).fill(0);
+    let w = new Array(3).fill(0); // buffer starts with temporary zeros.
+    for (let i = 0; i < n; i++) {
+        z[i] = b[0]*w[2] + b[1]*w[1] + b[2]*w[0];
+        w.shift();
+        w.push(x[i] - w[1]*a[1] - w[0]*a[2]);
+    }
+    return z;
+}
+
 // Functions to initialize graphics go after this //
 initPositions(BoxWidth, BoxHeight); // Initialize positions of the targets.
 baseGraphics("white", false); // Initialize the canvas
 
-// var websocket = new WebSocket("ws://128.2.244.29:6789/");
-//   websocket.onmessage = function (event) {
-//       data = JSON.parse(event.data);
-//       switch (data.type) {
-//           case 'users':
-//               users.textContent = (
-//                   data.count.toString() + " client" +
-//                   (data.count == 1 ? "" : "s"));
-//               break;
-//           case 'touch':
-//               cursorGraphicsHandler(data.x, data.y);
-//               break;
-//           case 'xy':
-//               cursorGraphicsHandler(data.x, data.y);
-//               break;
-//           default:
-//               console.error(
-//                   "unsupported event", data);
-//       }
-//   };
+const event_data = {
+    y: BoxHeight, 
+    x: BoxWidth 
+}
+const ALPHA = 0.1; // EMA coefficient
+const BETA = 1 - ALPHA;
+
+var websocket = new WebSocket("ws://128.2.244.29:6789/");
+websocket.onmessage = function (event) {
+    let packet = JSON.parse(event.data);
+    switch (packet.type) {
+        case 'users':
+            users.textContent = (
+            packet.count.toString() + " client" +
+            (packet.count == 1 ? "" : "s"));
+            break;
+        case 'touch':
+            handleState(state.taskState, data);
+            break;
+        case 'xy':
+            //   history.x.shift();
+            //   history.y.shift();
+            //   history.x.push(linearMap(packet.x, 0, 675, 0, 2*BoxWidth));
+            //   history.y.push(linearMap(packet.y, 670, 000, 0, 2*BoxHeight));
+            //   let temp_data = {
+            //     x: filter(coeffs.b, coeffs.a, history.x), 
+            //     y: filter(coeffs.b, coeffs.a, history.y)
+            //   };
+            //   let event_data = {
+            //     x: temp_data.x[29], 
+            //     y: temp_data.y[29]
+            //   };
+            //   console.log(event_data);
+            event_data.y = ALPHA * linearMap(packet.x, 675, 0, 0, 2*BoxHeight) + BETA * event_data.y;
+            event_data.x = ALPHA * linearMap(packet.y, 670, 0, 0, 2*BoxWidth) + BETA * event_data.x;
+
+            handleState(state.taskState, event_data);
+            break;
+        case 'tgt': 
+            console.log(packet);
+            updated_target_index = packet['tgt'];
+            break;
+        case 'state':
+            console.warn("Nothing implemented yet for `state` event.")
+            break;
+        default:
+            console.error("unsupported event", data);
+            break;
+      }
+  };
