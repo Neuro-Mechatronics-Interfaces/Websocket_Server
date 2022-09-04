@@ -1,0 +1,40 @@
+body {
+    color: #fff;
+    background-color: #000;
+    box-sizing: border-box;
+    font-family: Tahoma, sans-serif;
+  }
+  
+  h1 {
+    color: #fff;
+    font-weight: bold;
+  }
+  
+  /* Style the top navigation bar */
+  .topnav {
+    background-color: #000;
+  }
+  
+  /* Style the topnav links */
+  .topnav span {
+    float: right;
+    display: block;
+    color: #ddd;
+    text-align: center;
+    padding: 0px 8px 0px 4px;
+    text-decoration: none;
+  }
+  
+  /* Style the content */
+  .content {
+    background-color: #000;
+    box-sizing: content-box;
+    width: 1200px;
+    height: 800px;
+  }
+  
+  canvas {
+    box-sizing: content-box;
+    height: 800px;
+    width: 1200px;
+  }
