@@ -8,7 +8,7 @@ import json
 import serial
 from config import address, port
 
-IP = address['xy_server']
+IP = address['xy']
 PORT = port['xy']
 
 async def publisher(s, uri):

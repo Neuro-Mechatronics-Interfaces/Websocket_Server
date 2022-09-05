@@ -1,1 +1,1 @@
-from .config import address, ip
+from .config import *
