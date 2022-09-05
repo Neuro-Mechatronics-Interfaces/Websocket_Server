@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import websockets
+from config import address, port
 
 logging.basicConfig()
 
@@ -15,28 +16,17 @@ STATE = {"value": 0,
          "y": 0}
 
 USERS = set()
-IP = '128.2.244.29'
-PORT = 6789
+IP = address['demo']
+PORT = port['demo']
 
 def state_event():
-    return json.dumps({"type": "state", "value": STATE["value"]})
+    return json.dumps({"event": "none", "type": "state", "value": STATE["value"]})
 
 def users_event():
-    return json.dumps({"type": "users", "count": len(USERS)})
+    return json.dumps({"event": "none", "type": "users", "count": len(USERS)})
 
 def touch_event():
-    return json.dumps({"type": "touch", "x": STATE["x"], "y": STATE["y"]})
-
-def xy_event():
-    return json.dumps({"type": "xy", "x": STATE["x"], "y": STATE["y"]})
-
-def target_event():
-    return json.dumps({"type": "tgt", "tgt": STATE["tgt"]})
-
-async def notify_target():
-    if USERS:
-        message = target_event()
-        await asyncio.wait([user.send(message) for user in USERS])
+    return json.dumps({"event": "none", "type": "touch", "x": STATE["x"], "y": STATE["y"]})
 
 async def notify_state():
     if USERS:  # asyncio.wait doesn't accept an empty list
@@ -46,11 +36,6 @@ async def notify_state():
 async def notify_users():
     if USERS:  # asyncio.wait doesn't accept an empty list
         message = users_event()
-        await asyncio.wait([user.send(message) for user in USERS])
-
-async def notify_xy():
-    if USERS:
-        message = xy_event()
         await asyncio.wait([user.send(message) for user in USERS])
 
 async def notify_touch():
@@ -85,14 +70,6 @@ async def packet_handler(websocket, path):
                 STATE["x"] = data["x"]
                 STATE["y"] = data["y"]
                 await notify_touch()
-            elif data["event"] == "get_tgt":
-                await notify_target()
-            elif data["event"] == "set_tgt":
-                STATE["tgt"] = data["tgt"]
-            elif data["event"] == "xy":
-                STATE["x"] = data["x"]
-                STATE["y"] = data["y"]
-                await notify_xy()
             else:
                 logging.error("unsupported event: %s", data)
     finally:

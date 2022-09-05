@@ -6,38 +6,38 @@ import asyncio
 import websockets
 import json
 import sys
+from config import address, port
 
-IP = '128.2.244.29'
-PORT = 6789
+IP = address['target']
+PORT = port['target']
 
 def next_line(fname):
     while True:
         with open(fname, 'r') as file:
             for line in file:
                 yield int(line)
-            close(file)
+            file.close()
 
 async def periodic_publisher(fname, uri):
-    next_target = next_line(fname)
+    target = next_line(fname)
     async for websocket in websockets.connect(uri):
         try:
             message = await websocket.recv()
             packet = json.loads(message)
-            try:
-                if packet['event'] == "get_tgt":
-                    tgt = next_target.next()
-                    data = {'event': 'set_tgt', 'tgt': tgt}
-                    await websocket.send(json.dumps(data))
-            except Exception:
-                pass                
+            # print(packet)
+            if packet['type'] == "tgt":
+                tgt = next(target)
+                data = {'event': 'set_tgt', 'tgt': tgt}
+                await websocket.send(json.dumps(data))              
         except websockets.ConnectionClosed:
                 print("WS Connection Back-Pressure: Using New Websocket.")
                 continue
 
 if (len(sys.argv) < 2) or (sys.argv[1] is None):
-    name = 'targets.txt'
-    print("Looking for targets in default: targets.txt")
+    name = 'config/targets.txt'
+    print(f'Looking for targets in: {name} (default)')
 else:
     name = sys.argv[1]
+    print(f'Looking for targets in: {name}')
 
 asyncio.get_event_loop().run_until_complete(periodic_publisher(name, f'ws://{IP}:{PORT}'))

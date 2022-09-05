@@ -4,9 +4,10 @@
 
 import asyncio
 import websockets
+from config import address, port
 
-IP = '128.2.244.29'
-PORT = 6789
+IP = address['demo_server']
+PORT = port['demo']
 
 async def hello():
     uri = f"ws://{IP}:{PORT}"

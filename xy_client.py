@@ -6,9 +6,10 @@ import asyncio
 import websockets
 import json
 import serial
+from config import address, port
 
-IP = '128.2.244.29'
-PORT = 6789
+IP = address['xy_server']
+PORT = port['xy']
 
 async def publisher(s, uri):
     async for websocket in websockets.connect(uri, ping_interval=1.0, ping_timeout=0.050):

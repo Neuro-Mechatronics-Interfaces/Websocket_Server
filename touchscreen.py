@@ -11,9 +11,10 @@ from PyQt5.QtCore import QThread, pyqtSignal
 import asyncio
 import websockets
 import json
+from config import address, port
 
-IP = '128.2.244.29'
-PORT = 6789
+IP = address['touchscreen']
+PORT = port['touchscreen']
 
 class MyWindow(QMainWindow):
     def __init__(self):

@@ -37,6 +37,7 @@
                 font-size: 2em;
             }
         </style>
+        <script src="config/config.js"></script>
     </head>
     <body>
         <div class="buttons">
@@ -58,7 +59,7 @@
                 users = document.querySelector('.users'),
                 x = document.querySelector('.x'),
                 y = document.querySelector('.y'),
-                websocket = new WebSocket("ws://128.2.244.29:6789/");
+                websocket = new WebSocket(`ws://${address.demo}:${port.demo}/`);
             minus.onclick = function (event) {
                 websocket.send(JSON.stringify({event: 'minus'}));
             }

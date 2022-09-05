@@ -158,7 +158,7 @@ function newTrial() {
     console.log(updated_target_index);
     state.target = updated_target_index;
   } else {
-    websocket.send(JSON.stringify({event: 'get_tgt'}));
+    ws_tgt.send(JSON.stringify({event: 'get_tgt', type: 'none'}));
   }
   if (state.numTrials > BaselineTrials + PerturbationTrials + WashoutTrials) {
     endSession(); // If too many trials, end the session.
@@ -640,8 +640,10 @@ const event_data = {
 const ALPHA = 0.1; // EMA coefficient
 const BETA = 1 - ALPHA;
 
-var websocket = new WebSocket("ws://128.2.244.29:6789/");
-websocket.onmessage = function (event) {
+const ws_xy = new WebSocket(`ws://${address.xy}:${port.xy}/`);
+const ws_tgt = new WebSocket(`ws://${address.target}:${port.target}/`);
+
+ws_xy.onmessage = function (event) {
     let packet = JSON.parse(event.data);
     switch (packet.type) {
         case 'users':
@@ -653,22 +655,8 @@ websocket.onmessage = function (event) {
             handleState(state.taskState, data);
             break;
         case 'xy':
-            //   history.x.shift();
-            //   history.y.shift();
-            //   history.x.push(linearMap(packet.x, 0, 675, 0, 2*BoxWidth));
-            //   history.y.push(linearMap(packet.y, 670, 000, 0, 2*BoxHeight));
-            //   let temp_data = {
-            //     x: filter(coeffs.b, coeffs.a, history.x), 
-            //     y: filter(coeffs.b, coeffs.a, history.y)
-            //   };
-            //   let event_data = {
-            //     x: temp_data.x[29], 
-            //     y: temp_data.y[29]
-            //   };
-            //   console.log(event_data);
             event_data.y = ALPHA * linearMap(packet.x, 675, 0, 0, 2*BoxHeight) + BETA * event_data.y;
             event_data.x = ALPHA * linearMap(packet.y, 670, 0, 0, 2*BoxWidth) + BETA * event_data.x;
-
             handleState(state.taskState, event_data);
             break;
         case 'tgt': 
@@ -677,6 +665,23 @@ websocket.onmessage = function (event) {
             break;
         case 'state':
             console.warn("Nothing implemented yet for `state` event.")
+            break;
+        case 'none':
+            break;
+        default:
+            console.error("unsupported event", data);
+            break;
+      }
+  };
+
+  ws_tgt.onmessage = function (event) {
+    let packet = JSON.parse(event.data);
+    switch (packet.type) {
+        case 'tgt': 
+            console.log(packet);
+            updated_target_index = packet['tgt'];
+            break;
+        case 'none':
             break;
         default:
             console.error("unsupported event", data);
