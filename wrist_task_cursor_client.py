@@ -12,7 +12,7 @@ IP = address['cursor']
 PORT = port['cursor']
 
 async def publisher(s, uri):
-    async for websocket in websockets.connect(uri, ping_interval=1.0, ping_timeout=0.050):
+    async for websocket in websockets.connect(uri, ping_interval=1.0, ping_timeout=1.0):
         try:
             line = s.readline()
             vals = line.decode()

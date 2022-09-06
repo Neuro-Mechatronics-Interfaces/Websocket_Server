@@ -5,10 +5,10 @@ Task	standard	None
 Tag	1Target-M	None
 Trials	2500	trials
 Allowed Overshoots	1	overshoots
+N Targets	8	targets
+Target Size	40.0	pixels
 Cursor Size	8.0	pixels
 Cursor Line Width	5.0	pixels
-N Targets   8   targets
-Target Size	40.0	pixels
 Target Line Width	5.0	pixels
 Outer Target Circle Radius	250.0	pixels
 Target Angle Jitter	0	degrees
@@ -23,7 +23,7 @@ Min T1_HOLD_2 Time	0.75	s
 Max T1_HOLD_2 Time	1.0	s
 Min INTERTRIAL Time	0.15	s
 Max INTERTRIAL Time	0.15	s
-Fixed GO Limit  0.1 s
+Fixed GO Limit	0.1	s
 Fixed MOVE Limit	1.25	s
 Fixed OVERSHOOT Limit	0.5	s
 Fixed T2_HOLD_1 Limit	0.5	s
@@ -42,13 +42,13 @@ Color Markers	False	bool
 Enable Sound	True	bool
 Cursor Override	False	bool
 Save Data	True	bool
-N Trials Baseline  5   trials
-N Trials Perturbation  5   trials
-N Trials Washout   5   trials
-Jitter Angular Variance 10.0    degrees
-VMR Rotation Angle  30  degrees
-EMA Alpha   0.1 coeff
-ADC Left    0   bits
-ADC Right   675 bits
-ADC Top     600 bits
-ADC Bottom  0   bits
+N Trials Baseline	5	trials
+N Trials Perturbation	5	trials
+N Trials Washout	5	trials
+Jitter Angular Variance	10.0	degrees
+VMR Rotation Angle	30	degrees
+EMA Alpha	0.1	coeff
+ADC Left	700	bits
+ADC Right	0	bits
+ADC Top	0	bits
+ADC Bottom	800	bits

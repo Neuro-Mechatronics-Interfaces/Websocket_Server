@@ -688,7 +688,7 @@ const event_data = {
 };
 
 const ws_xy = new WebSocket(`ws://${address.cursor}:${port.cursor}/`);
-const ws_tgt = new WebSocket(`ws://${address.target}:${port.target}/`);
+// const ws_tgt = new WebSocket(`ws://${address.target}:${port.target}/`);
 
 ws_xy.onmessage = function (event) {
     let packet = JSON.parse(event.data);
@@ -702,10 +702,11 @@ ws_xy.onmessage = function (event) {
             handleState(state.taskState, data);
             break;
         case 'cursor':
-            // let scaled_data = handleCalibratedScaling(event.data['x'], event.data['y']);
+            // let scaled_data = handleCalibratedScaling(packet.x, packet.y);
             // event_data.x = pars.Alpha * scaled_data.x + pars.Beta * event_data.x;
             // event_data.y = pars.Alpha * scaled_data.y + pars.Beta * event_data.y;
-            handleState(state.taskState, {x: event.data['x'], y: event.data['y']});
+            // console.log(packet)
+            handleState(state.taskState, {x: packet.y, y: packet.x});
             break;
         case 'tgt': 
             console.log(packet);
@@ -724,17 +725,17 @@ ws_xy.onmessage = function (event) {
       }
   };
 
-  ws_tgt.onmessage = function (event) {
-    let packet = JSON.parse(event.data);
-    switch (packet.type) {
-        case 'tgt': 
-            console.log(packet);
-            updated_target_index = packet['tgt'];
-            break;
-        case 'none':
-            break;
-        default:
-            console.error("unsupported event", data);
-            break;
-      }
-  };
+  // ws_tgt.onmessage = function (event) {
+  //   let packet = JSON.parse(event.data);
+  //   switch (packet.type) {
+  //       case 'tgt': 
+  //           console.log(packet);
+  //           updated_target_index = packet['tgt'];
+  //           break;
+  //       case 'none':
+  //           break;
+  //       default:
+  //           console.error("unsupported event", data);
+  //           break;
+  //     }
+  // };

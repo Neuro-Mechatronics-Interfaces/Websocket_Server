@@ -11,12 +11,12 @@ if __name__ == "__main__":
         p_file = sys.argv[2]
     elif len(sys.argv) == 2:
         t_file = sys.argv[1]
-        p_file = 'config/params.json'
+        p_file = 'config/params.txt'
     else:
         t_file = 'config/targets.txt'
-        p_file = 'config/params.json'
+        p_file = 'config/params.txt'
 
-    game = CenterOut(targets_file = 'config/targets.txt', params_file = 'config/params.json')
+    game = CenterOut(targets_file = 'config/targets.txt', params_file = 'config/params.txt')
     server = websockets.serve(game.cursor_and_task_state_messages, 
                             address['cursor'], 
                             port['cursor'])
