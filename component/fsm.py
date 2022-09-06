@@ -156,9 +156,9 @@ class CenterOut(object):
 
     def count_good(self):
         """ Increment successful and total trial counters. Also, flip order of t1/t2 (inner vs outer). """
-        self.n.successful += 1
-        self.n.total += 1
-        self.n.overshoots = 0
+        self.n['successful'] += 1
+        self.n['total'] += 1
+        self.n['overshoots'] = 0
         if self.n.successful % 2 == 0:
             self.direction = [TaskDirection.IN, TaskDirection.OUT]
             self.target = next(self._target)
@@ -168,9 +168,9 @@ class CenterOut(object):
 
     def count_bad(self):
         """ Increment unsuccessful and total trial counters. """
-        self.n.unsuccessful += 1
-        self.n.total += 1
-        self.n.overshoots = 0
+        self.n['unsuccessful'] += 1
+        self.n['total'] += 1
+        self.n['overshoots'] = 0
         self.announce_entering()
 
     def in_t1(self) -> bool:
@@ -212,14 +212,14 @@ class CenterOut(object):
             self.machine.states[TaskState.t1_hold_2.name].timeout = randomize(self.p['Min T1_HOLD_2 Time'], self.p['Max T1_HOLD_2 Time'])
 
     def announce_leaving_on_overshoot(self):
-        self.n.overshoots += 1
-        self.logging.info(f"LEFT::{self.state.name}::OVERSHOOTS={self.n.overshoots}")
+        self.n['overshoots'] += 1
+        self.logging.info(f"LEFT::{self.state.name}::OVERSHOOTS={self.n['overshoots']}")
 
     def announce_leaving_reset(self):
-        self.n.overshoots = 0
-        self.n.total = 0
-        self.n.successful = 0
-        self.n.unsuccessful = 0
+        self.n['overshoots'] = 0
+        self.n['total'] = 0
+        self.n['successful'] = 0
+        self.n['unsuccessful'] = 0
         self.logging.info(f"LEFT::{self.state.name}::RESET")
 
     def announce_entering(self):
