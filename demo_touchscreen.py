@@ -42,8 +42,8 @@ class MyWindow(QMainWindow):
     async def send_event(self, event):
         print("Sending event")
         async with websockets.connect(f"ws://{IP}:{PORT}") as websocket:
-            await websocket.send(json.dumps({'event': 'click', 'x': event.x(), 'y': event.y()}))
-            self.statusBar().showMessage(f"Data sent: [click <{event.x()}, {event.y()}>]")
+            await websocket.send(json.dumps({'event': 'touch', 'x': event.x(), 'y': event.y()}))
+            self.statusBar().showMessage(f"Data sent: [touch <{event.x()}, {event.y()}>]")
             self.update()
         
 

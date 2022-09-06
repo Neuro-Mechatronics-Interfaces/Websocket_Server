@@ -27,7 +27,7 @@ async def periodic_publisher(fname, uri):
             # print(packet)
             if packet['type'] == "tgt":
                 tgt = next(target)
-                data = {'event': 'set_tgt', 'tgt': tgt}
+                data = {'event': 'set', 'tgt': tgt}
                 await websocket.send(json.dumps(data))              
         except websockets.ConnectionClosed:
                 print("WS Connection Back-Pressure: Using New Websocket.")

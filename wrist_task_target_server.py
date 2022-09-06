@@ -35,9 +35,9 @@ async def packet_handler(websocket, path):
         # await websocket.send(state_event())
         async for message in websocket:
             data = json.loads(message)
-            if data["event"] == "get_tgt":
+            if data["event"] == "get":
                 await notify_target()
-            elif data["event"] == "set_tgt":
+            elif data["event"] == "set":
                 TARGET["value"] = data["tgt"]
                 TARGET["count"][data["tgt"]] += 1
     finally:

@@ -8,8 +8,8 @@ import json
 import serial
 from config import address, port
 
-IP = address['xy']
-PORT = port['xy']
+IP = address['cursor']
+PORT = port['cursor']
 
 async def publisher(s, uri):
     async for websocket in websockets.connect(uri, ping_interval=1.0, ping_timeout=0.050):
@@ -17,7 +17,7 @@ async def publisher(s, uri):
             line = s.readline()
             vals = line.decode()
             x, y = vals.split(',')
-            data = {'event': 'xy', 'x': int(x), 'y': int(y)}
+            data = {'event': 'cursor', 'x': int(x), 'y': int(y)}
             await websocket.send(json.dumps(data))
             await websocket.ping()
         except websockets.ConnectionClosed:

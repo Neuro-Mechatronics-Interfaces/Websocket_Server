@@ -1,19 +1,30 @@
-const BaselineTrials = 5; // Total number of baseline trials
-const PerturbationTrials = 5; // Total number of perturbation trials
-const WashoutTrials = 5; // Total number of washout trials
-const Rotation = 30; // degrees
-const TargetRingRadius = 200; // pixels
-const TargetSize = 20; // pixels, radius
-const CursorSize = 5; // pixels, radius
-const PointerRadius = CursorSize * 2; // Radius of "pointy" part of cursor
-const FixedVelocity = 5; // pixels per WASD in "Cartesian" mode
-const FixedRadialVelocity = 5; // amount of pixels changed per "step" in "Polar" mode (w/s)
-const FixedAngularVelocity = deg2rad(15); //  angular change per "step" in "Polar" mode (a/d)
-const MODE = ["Homing", "Jitter"];
+const pars = {
+  BaselineTrials: 5, // Total # baseline trials
+  PerturbationTrials: 5, // Total # perturbation trials
+  WashoutTrials: 5, // Total # washout trials
+  VMR_Rotation: 30, // degrees
+  TargetRingRadius: 200, // pixels
+  TargetSize: 20, // pixels, radius
+  CursorSize: 5, // pixels, radius
+  JitterAngularVar: 10.0, // degrees (variance)
+  Mode: ["Standard", "Jitter", "Homing", "VMR"], // modified "modes" for task to run in
+  T1_Hold_1: 500.0, 
+  T1_Hold_2: 750.0,
+  T2_Hold_1: 500.0,
+  Move: 1000.0,
+  Overshoot: 250.0, 
+  React: 100.0, 
+  Alpha: 0.1, // EMA coefficient
+  Beta: 0.9, // 1 - EMA coefficient
+  ADC: {
+    Left: 0,      // Left-range value from microcontroller
+    Right: 675,   // Right-range value from microcontroller.
+    Bottom: 600,  // Bottom-range value from microcontroller.
+    Top: 0        // Top-range value from microcontroller.
+  }
+};
 const HOLD_PERIOD = 1000;
 const TARGET_PERIOD = 500;
-const JITTER_VAR = 10; // Jitter (degrees) range
-const HOMING_STRENGTH = 0.1; // Scales from 0 - 1, for strength of "homing" director
 
 // Pre-compute the target locations so that they don't get re-calculated each time the Check is called:
 const tx = new Array(8),
@@ -32,10 +43,7 @@ var BoxWidth, BoxHeight,
 // Create global state and data variables
 var state = initState();
 var data = initData();
-const history = {
-    x: new Array(30).fill(BoxWidth), 
-    y: new Array(30).fill(BoxHeight)
-};
+
 // console.log(history);
 state.canvas.width = BoxWidth*2;
 state.canvas.height = BoxHeight*2;
@@ -50,8 +58,8 @@ const context = state.canvas.getContext("2d");
 function initPositions(w, h) {
   for (var i = 0; i < 8; i++) {
     ttheta[i] = (i * Math.PI) / 4;
-    tx[i] = w + TargetRingRadius * Math.cos(ttheta[i]);
-    ty[i] = h + TargetRingRadius * Math.sin(ttheta[i]);
+    tx[i] = w + pars.TargetRingRadius * Math.cos(ttheta[i]);
+    ty[i] = h + pars.TargetRingRadius * Math.sin(ttheta[i]);
   }
 }
 
@@ -67,8 +75,12 @@ function initState() {
     trialType: "baseline",
     numTrials: 0,
     numSuccessful: 0, 
+    numOvershoots: 0, 
     trialStart: null,
-    targetStart: null,
+    t1Start: null,
+    t2Start: null, 
+    moveStart: null, 
+    overshootStart: null, 
     direction: "out",
     target: getRandomTargetIndex(),
     canvas: document.getElementById("task"),
@@ -78,7 +90,10 @@ function initState() {
 // Returns initial data structure for stored data.
 function initData() {
   return {
+    trialID: [], 
     trialNum: [],
+    trialAttempt: [], 
+    trialOvershoots: [], 
     trialPhase: [],
     trialType: [],
     trialMode: [],
@@ -93,102 +108,36 @@ function initData() {
   };
 }
 
-// Toggle name and class of button
-function toggleMode() {
-  var label = modeButton.innerText;
-  if (label == MODE[0]) {
-    modeButton.innerText = MODE[1];
-    modeButton.classList = "btn btn-secondary";
-    state.taskMode = MODE[1];
-  } else if (label == MODE[1]) {
-    modeButton.innerText = MODE[0];
-    modeButton.classList = "btn btn-primary";
-    state.taskMode = MODE[0];
-  } else {
-    throw (
-      "Label should only match either '" + MODE[0] + "' or '" + MODE[1] + "'!"
-    );
-  }
-}
-
-// Does the reset
-function resetData() {
-  state.taskState = "idle";
-  state.trialType = "baseline";
-  state.numTrials = 0;
-  state.numSuccessful = 0;
-  state.trialStart = null;
-  data = initData();
-  saveButton.style.visibility = "hidden";
-
-  baseGraphics("black", false);
-  if (state.running) {
-    state.running = false;
-    newTrial();
-  }
-}
-
-// Start the "recording" session.
-function startSession() {
-  resetData();
-  modeButton.disabled = true;
-  startButton.classList = "btn btn-success";
-  endButton.classList = "btn btn-outline-danger";
-//   addMouseEvents();
-  state.canvas.style.cursor = "none";
-  state.running = true;
-  newTrial();
-}
-
-// End the "recording" session (no more trials)
-function endSession() {
-  state.taskState = "done";
-  state.running = false;
-  modeButton.disabled = false;
-  saveButton.style.visibility = "visible";
-  startButton.classList = "btn btn-outline-success";
-  endButton.classList = "btn btn-danger";
-//   removeMouseEvents();
-  state = initState(); // reset the state
-}
-
 // Begin a new trial
 function newTrial() {
   if (state.direction === "out") {
     console.log(updated_target_index);
     state.target = updated_target_index;
   } else {
-    ws_tgt.send(JSON.stringify({event: 'get_tgt', type: 'none'}));
+    ws_tgt.send(JSON.stringify({event: 'get', type: 'none'}));
   }
-  if (state.numTrials > BaselineTrials + PerturbationTrials + WashoutTrials) {
+  if (state.numSuccessful > pars.BaselineTrials + pars.PerturbationTrials + pars.WashoutTrials) {
     endSession(); // If too many trials, end the session.
   }
   // Determine trial type
-  if (state.numTrials < BaselineTrials) {
+  if (state.numSuccessful < pars.BaselineTrials) {
     state.trialType = "baseline";
-  } else if (state.numTrials < BaselineTrials + PerturbationTrials) {
+  } else if (state.numSuccessful < pars.BaselineTrials + pars.PerturbationTrials) {
     state.trialType = "vmr";
   } else {
     state.trialType = "washout";
   }
+  state.numAttempts += 1;
+  state.numOvershoots = 0;
 
   // Draw targets and center spot
   baseGraphics("orange", false);
   state.taskState = "pre";
+  state.trialStart = getCurrentTime();
 }
 
 // End the current trial by updating state parameters.
 function endTrial() {
-
-//   state.target = -1; // "Uncolor" all the circles.
-//   baseGraphics("black", false);
-  if (state.direction === "out") {
-    state.direction = "in";
-  } else {
-    state.direction = "out";
-  }
-//   console.log(state.direction);
-  state.numTrials += 1;
   trials.innerText = `${state.numSuccessful}/${state.numTrials}`
   newTrial();
 }
@@ -204,18 +153,20 @@ function baseGraphics(c_start, hl_target) {
 
   if (state.direction === "out") {
     // Start
-    drawCircle(BoxWidth, BoxHeight, TargetSize, c_start);
+    drawCircle(BoxWidth, BoxHeight, pars.TargetSize, c_start);
 
     // Target
-    for (i = 0; i < 8; i++) {
-        drawTarget(i, hl_target);
+    if (['t1_hold_2', 'go', 'move', 't2_hold', 'success', 'overshoot'].indexOf(state.taskState) >= 0) {
+      drawTarget(state.target, hl_target);
     }
   } else { // "in"
     // Start
-    drawCircle(tx[state.target], ty[state.target], TargetSize, c_start);
+    drawCircle(tx[state.target], ty[state.target], pars.TargetSize, c_start);
 
     // Center
-    drawTarget(state.target, hl_target);
+    if (['t1_hold_2', 'go', 'move', 't2_hold', 'success', 'overshoot'].indexOf(state.taskState) >= 0) {
+      drawTarget(state.target, hl_target);
+    }
   }
 }
 
@@ -241,23 +192,23 @@ function drawTarget(index, hl_target) {
     } else {
       c = "black";
     }
-    drawCircle(tx[index], ty[index], TargetSize, c);
+    drawCircle(tx[index], ty[index], pars.TargetSize, c);
   } else {
     if (hl_target) {
       c = "cyan";
     } else {
       c = "seagreen";
     }
-    drawCircle(BoxWidth, BoxHeight, TargetSize, c);
+    drawCircle(BoxWidth, BoxHeight, pars.TargetSize, c);
   }
 }
 
 // Draw the actual cursor
 function drawCursor(x, y, c) {
-  drawCircle(x, y, CursorSize, c);
+  drawCircle(x, y, pars.CursorSize, c);
 }
 
-// Check if mouse is in start target for 0.5s
+// Check if mouse is in start target
 function startCheck(x, y) {
   let radius;
   if (state.direction === "out") {
@@ -265,7 +216,7 @@ function startCheck(x, y) {
   } else {
     radius = l2norm(x - tx[state.target], y - ty[state.target]);
   }
-  if (radius < TargetSize) {
+  if (radius < pars.TargetSize) {
     return true;
   } else {
     return false;
@@ -281,138 +232,230 @@ function targetCheck(x, y) {
     radius = l2norm(BoxWidth - x, BoxHeight - y);
   }
   
-  if (radius < TargetSize) {
+  if (radius < pars.TargetSize) {
     return true;
   } else {
     return false;
   }
 }
 
+function trial_was_successful() {
+  state.numSuccessful += 1;
+  if (state.direction === "out") {
+    state.direction = "in";
+  } else {
+    state.direction = "out";
+  }
+}
+
+function trial_was_unsuccessful(h) {
+  state.taskState = "pre";
+  baseGraphics("orange", false);
+  drawCursor(h.x, h.y, "white");
+  newTrial();
+}
+
+function indicate_in_t1_hold_1(h) {
+  state.taskState = "t1_hold_1";
+  baseGraphics("cyan", false);
+  drawCursor(h.x, h.y, "gold");
+}
+
+function indicate_in_t1_hold_2(h) {
+  state.taskState = "t1_hold_2";
+  baseGraphics("cyan", false);
+  drawCursor(h.x, h.y, "dodgerblue");
+}
+
+function indicate_in_go(h) {
+  state.taskState = "go";
+  baseGraphics("black", false);
+  drawCursor(h.x, h.y, "dodgerblue");
+}
+
+function indicate_in_move(h) {
+  state.taskState = "move";
+  baseGraphics("black", false);
+  drawCursor(h.x, h.y, "dodgerblue");
+}
+
+function indicate_in_t2_hold_1(h) {
+  state.taskState = "t2_hold_1";
+  baseGraphics("black", true);
+  drawCursor(h.x, h.y, "gold");
+}
+
+function indicate_in_overshoot(h) {
+  state.taskState = "overshoot";
+  baseGraphics("black", false);
+  drawCursor(c.x, c.y, "red");
+}
+
+function indicate_in_success(h) {
+  state.taskState = "success";
+  baseGraphics("black", false);
+  drawCursor(c.x, c.y, "blue");
+}
+
+// Handles rescaling the data based on calibration values
+function handleCalibratedScaling(x, y) {
+  return {
+    x: linearMap(packet.x, pars.ADC.Left, pars.ADC.Right, 0, 2*BoxHeight),
+    y: linearMap(packet.y, pars.ADC.Bottom, pars.ADC.Top, 0, 2*BoxWidth )
+  };
+}
+
 // State machine
 function handleState(s, h) {
   // Current state options:
   // 1. "pre"       : Pre-trial
-  // 2. "hold"      : Holding, in trial onset circle
-  // 3. "go"        : In trial onset circle, cue received
-  // 4. "move"      : Moving to target (outside onset circle)
-  // 5. "target"    : Inside the target circle
-  // 6. "overshoot" : Already went to "5" on this trial and now outside target
-  // 7. "success"   : Successfully completed the trial.
+  // 2. "t1_hold_1" : Holding, in trial onset circle
+  // 3. "t1_hold_2" : Still holding, in trial onset circle but now see t2.
+  // 4. "go"        : In trial onset circle, cue received
+  // 5. "move"      : Moving to target (outside onset circle)
+  // 6. "t2_hold_1" : Inside the target circle
+  // 7. "overshoot" : Already went to "5" on this trial and now outside target
+  // 8. "success"   : Successfully completed the trial.
 
-//   var c, p;
-//   if (state.trialType === "vmr") {
-//     // Handle rotating the data, if needed
-//     p = cartesian2polar(h);
-//     p.theta = p.theta - (Rotation / 180) * Math.PI;
-//   } else {
-//     p = cartesian2polar(h);
-//   }
-//   if (state.taskMode === "Homing") {
-//     c = polar2cartesian(p);
-//     let d_theta =
-//       Math.atan2(ty[state.target] - c.y, tx[state.target] - c.x) - p.theta;
-//     p.theta = p.theta + HOMING_STRENGTH * d_theta;
-//   } else {
-//     // Otherwise add jitter
-//     p.theta = (p.theta * p.r + getRandomAngle() * 3) / (p.r + 3);
-//   }
-//   c = polar2cartesian(p);
-  var c = h;
-//   console.log(c);
-
-    console.log(s);
+  console.log(s);
+  let c = h;  // we can also make c be the "rotated" data or whatever (TODO)
+  appendData(c.x, c.y, h.x, h.y);
   if (s === "idle") {
     return;
   }
   if (s === "pre") {
     // 1
-    if (startCheck(h.x, h.y)) {
-      state.trialStart = getCurrentTime();
-      appendData(h.x, h.y, h.x, h.y);
-      state.taskState = "hold";
-      baseGraphics("cyan", false);
-      drawCursor(h.x, h.y, "gold");
+    if (startCheck(c.x, c.y)) {
+      state.t1Start = getCurrentTime();
+      indicate_in_t1_hold_1(c);
       return;
     } else {
       baseGraphics("orange", false);
-      drawCursor(h.x, h.y, "white");
+      drawCursor(c.x, c.y, "white");
       return;
     }
-  } else if (s === "hold") {
-    // 2 : Target is holding in the pre-trial target
-    if (getTimeSince(state.trialStart) > HOLD_PERIOD) {
-      if (startCheck(h.x, h.y)) {
-        appendData(h.x, h.y, h.x, h.y);
-        state.taskState = "go";
-        baseGraphics("black", false);
-        drawCursor(h.x, h.y, "dodgerblue");
+  } else if (s === "t1_hold_1") {
+    // 2 : Target is holding in t1
+    if (getTimeSince(state.t1Start) > pars.T1_Hold_1) { // held long enough in t1 to complete t1_hold_1
+      if (startCheck(c.x, c.y)) { // and we are still in t1
+        indicate_in_t1_hold_2(c);
         return;
-      } else {
-        baseGraphics("cyan", false);
-        drawCursor(h.x, h.y, "gold");
+      } else { // otherwise we left t1 too early.
+        trial_was_unsuccessful(c);
         return;
       }
-    } else if (startCheck(h.x, h.y) === false) {
-      state.taskState = "pre";
-      baseGraphics("orange", false);
-      drawCursor(h.x, h.y, "white");
-    } else {
-      baseGraphics("cyan", false);
-      drawCursor(h.x, h.y, "gold");
+    } else if (startCheck(h.x, h.y) === false) { // moved out of t1
+      trial_was_unsuccessful(c);
+      return;
+    } else { // otherwise we are still waiting in t1_hold_1
+      indicate_in_t1_hold_1(c);
+      return;
+    }
+  } else if (s === "t1_hold_2") {
+    // 3 : Target is holding in t1; t2 has been shown.
+    if (getTimeSince(state.t1Start) > (pars.T1_Hold_1+pars.T1_Hold_2)) { // held long enough in t1 to complete t1_hold_2
+      if (startCheck(h.x, h.y)) { // and we are still in t1
+        state.moveStart = getCurrentTime();
+        indicate_in_go(c);
+        return;
+      } else { // otherwise we left t1 too early.
+        trial_was_unsuccessful(c);
+        return;
+      }
+    } else if (startCheck(h.x, h.y) === false) { // we moved out of t1 too early
+      trial_was_unsuccessful(c);
+      return;
+    } else { // otherwise we are still waiting in t1_hold_2
+      indicate_in_t1_hold_2(c);
     }
   } else if (s === "go") {
-    // 3 : (Transition) Go-Cue has been observed.
-    appendData(c.x, c.y, h.x, h.y);
-    baseGraphics("black", false);
-    drawCursor(c.x, c.y, "dodgerblue");
-    state.taskState = "move";
-  } else if (s === "move") {
-    // 4 : Movement that has not yet reached the target.
-    if (targetCheck(c.x, c.y)) {
-      baseGraphics("black", true);
-      drawCursor(c.x, c.y, "gold");
-      state.taskState = "target";
-      state.targetStart = getCurrentTime();
+    // 4 : (Transition) Go-Cue has been observed.
+    if (getTimeSince(state.moveStart) > pars.React) { // if we took too long
+      if (startCheck(c.x, c.y)) { // if we are still in the start target
+        trial_was_unsuccessful(c);
+        return;
+      } else { // we left in time
+        indicate_in_move(c);
+        return;
+      }
     } else {
-      baseGraphics("black", false);
-      drawCursor(c.x, c.y, "dodgerblue");
+      if (startCheck(c.x, c.y)) { // if we are still in the start target
+        indicate_in_go(c);
+        return;
+      } else { // we left in time
+        indicate_in_move(c);
+        return;
+      }
     }
-  } else if (s === "target") {
-    // 5 : Cursor is in the desired target.
-    // console.log("hit");
-    if (getTimeSince(state.targetStart) > TARGET_PERIOD) {
+  } else if (s === "move") {
+    // 5 : Movement that has not yet reached the target.
+    if (getTimeSince(state.moveStart) > pars.Move) { // if we are out of time
+      if (targetCheck(c.x, c.y)) { // if we hit the target, we're good
+        state.t2Start = getCurrentTime();
+        indicate_in_t2_hold_1(c);
+        return;
+      } else { // otherwise, we have failed.
+        trial_was_unsuccessful(c);
+        return;
+      }
+    } else {
+      if (targetCheck(c.x, c.y)) { // We hit the target, we're good
+        state.t2Start = getCurrentTime();
+        indicate_in_t2_hold_1(c);
+        return;
+      } else { // otherwise we are still in MOVE
+        indicate_in_move(c);
+        return;
+      }
+    }
+    
+  } else if (s === "t2_hold_1") {
+    // 6 : Cursor is in the desired target.
+    if (getTimeSince(state.t2Start) > pars.T2_Hold_1) {
       if (targetCheck(c.x, c.y)) {
         // cursor stayed in the target long enough for success.
         state.taskState = "success";
         baseGraphics("black", false);
         drawCursor(c.x, c.y, "white");
       } else {
-        state.taskState = "overshoot";
-        baseGraphics("black", false);
-        drawCursor(c.x, c.y, "red");
+        state.overshootStart = getCurrentTime();
+        state.numOvershoots += 1;
+        indicate_in_overshoot(c);
       }
     } else if (targetCheck(c.x, c.y) === false) {
       // cursor LEFT the target. indicate OVERSHOOT
-      state.taskState = "overshoot";
-      baseGraphics("black", false);
-      drawCursor(c.x, c.y, "red");
-    } else {
-      baseGraphics("black", true);
-      drawCursor(c.x, c.y, "gold");
+      state.overshootStart = getCurrentTime();
+      state.numOvershoots += 1;
+      indicate_in_overshoot(c);
+      return;
+    } else { // otherwise still holding t2_hold_1
+      indicate_in_t2_hold_1(c);
+      return;
     }
   } else if (s === "overshoot") {
-    // 6 : Cursor has overshot the target
-    if (targetCheck(c.x, c.y) === true) {
-      state.taskState = "target";
-      baseGraphics("black", true);
-      drawCursor(c.x, c.y, "gold");
+    // 7 : Cursor has overshot the target
+    if (getTimeSince(state.overshootStart) > pars.Overshoot) { // if we are out of time
+      if (targetCheck(c.x, c.y)) { // if we hit the target, we're good
+        state.t2Start = getCurrentTime();
+        indicate_in_t2_hold_1(c);
+        return;
+      } else { // otherwise, we have failed.
+        trial_was_unsuccessful(c);
+        return;
+      }
     } else {
-      baseGraphics("black", false);
-      drawCursor(c.x, c.y, "red");
+      if (targetCheck(c.x, c.y)) { // We hit the target, we're good
+        state.t2Start = getCurrentTime();
+        indicate_in_t2_hold_1(c);
+        return;
+      } else { // otherwise we are still in MOVE
+        indicate_in_overshoot(c);
+        return;
+      }
     }
   } else if (s === "success") {
-    // 7 : (Transition) Trial completed successfully.
-    state.numSuccessful += 1;
+    // 8 : (Transition) Trial completed successfully.
+    trial_was_successful();
     endTrial();
     return;
   } else {
@@ -423,7 +466,9 @@ function handleState(s, h) {
 
 // Collect data helper function -- append data to arrays for each timestep
 function appendData(handX, handY, cursorX, cursorY) {
-  data.trialNum.push(state.numTrials);
+  data.trialID.push(state.numTrials);
+  data.trialNum.push(state.numSuccessful);
+  data.trialOvershoots.push(state.numOvershoots);
   data.trialPhase.push(state.taskState);
   data.trialType.push(state.trialType);
   data.trialTarget.push(state.target);
@@ -440,7 +485,9 @@ function appendData(handX, handY, cursorX, cursorY) {
 function saveData() {
   var rows = [
     [
+      "trialID", 
       "trialNum",
+      "trialOvershoots", 
       "trialPhase",
       "trialType",
       "trialDirection", 
@@ -451,9 +498,11 @@ function saveData() {
       "handY",
     ],
   ];
-  for (let i = 0; i < data.trialNum.length; i++) {
+  for (let i = 0; i < data.trialID.length; i++) {
     let trialData = [
+      data.trialID[i], 
       data.trialNum[i],
+      data.trialOvershoots[i], 
       data.trialPhase[i],
       data.trialType[i],
       data.trialDirection[i], 
@@ -487,7 +536,7 @@ function getRandomTargetIndex() {
 
 // Return angle (radians)
 function getRandomAngle() {
-  return deg2rad(Math.floor(Math.random() * (2 * JITTER_VAR) - JITTER_VAR)); // want to be on range [0 - 360]
+  return deg2rad(Math.floor(Math.random() * (2 * pars.JitterAngularVar) - pars.JitterAngularVar)); // want to be on range [0 - 360]
 }
 
 // Helper to convert degrees to radians
@@ -634,13 +683,11 @@ initPositions(BoxWidth, BoxHeight); // Initialize positions of the targets.
 baseGraphics("white", false); // Initialize the canvas
 
 const event_data = {
-    y: BoxHeight, 
-    x: BoxWidth 
-}
-const ALPHA = 0.1; // EMA coefficient
-const BETA = 1 - ALPHA;
+    x: BoxHeight, 
+    y: BoxWidth 
+};
 
-const ws_xy = new WebSocket(`ws://${address.xy}:${port.xy}/`);
+const ws_xy = new WebSocket(`ws://${address.cursor}:${port.cursor}/`);
 const ws_tgt = new WebSocket(`ws://${address.target}:${port.target}/`);
 
 ws_xy.onmessage = function (event) {
@@ -654,10 +701,11 @@ ws_xy.onmessage = function (event) {
         case 'touch':
             handleState(state.taskState, data);
             break;
-        case 'xy':
-            event_data.y = ALPHA * linearMap(packet.x, 675, 0, 0, 2*BoxHeight) + BETA * event_data.y;
-            event_data.x = ALPHA * linearMap(packet.y, 670, 0, 0, 2*BoxWidth) + BETA * event_data.x;
-            handleState(state.taskState, event_data);
+        case 'cursor':
+            // let scaled_data = handleCalibratedScaling(event.data['x'], event.data['y']);
+            // event_data.x = pars.Alpha * scaled_data.x + pars.Beta * event_data.x;
+            // event_data.y = pars.Alpha * scaled_data.y + pars.Beta * event_data.y;
+            handleState(state.taskState, {x: event.data['x'], y: event.data['y']});
             break;
         case 'tgt': 
             console.log(packet);
@@ -667,6 +715,8 @@ ws_xy.onmessage = function (event) {
             console.warn("Nothing implemented yet for `state` event.")
             break;
         case 'none':
+            break;
+        case 'params':
             break;
         default:
             console.error("unsupported event", data);

@@ -20,13 +20,11 @@
     </div>
     <h1>Center Out</h1>
     <div class="centered">
-        <button type="button" class="btn btn-secondary" id="modeButton" onclick="toggleMode()">Jitter</button>
-        <button type="button" class="btn btn-outline-success" id="startButton"
-            onclick="startSession()">Start</button>
-        <button type="button" class="btn btn-danger" id="endButton" onclick="endSession()">End</button>
-        <button type="button" class="btn btn-warning" id="resetButton" onclick="resetData()">Reset</button>
-        <button type="button" class="btn btn-dark" id="saveButton" style="visibility:hidden"
-            onclick="saveData()">Save CSV Data</button>
+        <button type="button" class="btn btn-secondary" id="modeButton" onclick="toggleMode()">standard</button>
+        <button type="button" class="btn btn-outline-success" id="startButton" onclick="startSession()">start</button>
+        <button type="button" class="btn btn-danger" id="endButton" onclick="endSession()">stop</button>
+        <button type="button" class="btn btn-warning" id="resetButton" onclick="resetData()">reset</button>
+        <button type="button" class="btn btn-info" id="saveButton" style="visibility:hidden" onclick="saveData()">save</button>
     </div>
     <main>
         <div class="content">
@@ -35,6 +33,55 @@
         
     </main>
     <script defer src="../js/state_coding.js"></script>
+    <script>
+        // Toggle name and class of button
+        function toggleMode() {
+            let old_index = pars.Mode.findIndex(element => element.includes("substring"));
+            let n_mode = pars.Mode.length;
+            let new_index = (old_index + 1) % n_mode;
+            modeButton.innerText = pars.Mode[new_index];
+            state.taskMode = pars.Mode[new_index];
+        }
+
+        // Does the reset
+        function resetData() {
+            state.taskState = "idle";
+            state.trialType = "baseline";
+            state.numTrials = 0;
+            state.numSuccessful = 0;
+            state.trialStart = null;
+            data = initData();
+            saveButton.style.visibility = "hidden";
+
+            baseGraphics("black", false);
+            if (state.running) {
+                state.running = false;
+                newTrial();
+            }
+        }
+
+        // Start the "recording" session.
+        function startSession() {
+            resetData();
+            modeButton.disabled = true;
+            startButton.classList = "btn btn-success";
+            endButton.classList = "btn btn-outline-danger";
+            state.canvas.style.cursor = "none";
+            state.running = true;
+            newTrial();
+        }
+
+        // End the "recording" session (no more trials)
+        function endSession() {
+            state.taskState = "done";
+            state.running = false;
+            modeButton.disabled = false;
+            saveButton.style.visibility = "visible";
+            startButton.classList = "btn btn-outline-success";
+            endButton.classList = "btn btn-danger";
+            state = initState(); // reset the state
+        }
+    </script>
 </body>
 
 
