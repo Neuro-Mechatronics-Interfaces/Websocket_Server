@@ -36,11 +36,12 @@
     <script>
         // Toggle name and class of button
         function toggleMode() {
-            let old_index = pars.Mode.findIndex(element => element.includes("substring"));
-            let n_mode = pars.Mode.length;
+            let old_index = validModes.findIndex(element => element.includes(state.taskMode));
+            let n_mode = validModes.length;
             let new_index = (old_index + 1) % n_mode;
-            modeButton.innerText = pars.Mode[new_index];
-            state.taskMode = pars.Mode[new_index];
+            modeButton.innerText = validModes[new_index];
+            state.taskMode = validModes[new_index];
+            pars.Mode = state.taskMode;
         }
 
         // Does the reset
@@ -55,6 +56,7 @@
 
             baseGraphics("black", false);
             if (state.running) {
+                ws_xy.send(JSON.stringify({event: 'reset'}));
                 state.running = false;
                 newTrial();
             }
@@ -68,6 +70,7 @@
             endButton.classList = "btn btn-outline-danger";
             state.canvas.style.cursor = "none";
             state.running = true;
+            ws_xy.send(JSON.stringify({event: 'start'}));
             newTrial();
         }
 
@@ -79,6 +82,7 @@
             saveButton.style.visibility = "visible";
             startButton.classList = "btn btn-outline-success";
             endButton.classList = "btn btn-danger";
+            ws_xy.send(JSON.stringify({event: 'stop'}));
             state = initState(); // reset the state
         }
     </script>

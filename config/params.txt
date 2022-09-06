@@ -10,21 +10,21 @@ Target Size	40.0	pixels
 Cursor Size	8.0	pixels
 Cursor Line Width	5.0	pixels
 Target Line Width	5.0	pixels
-Outer Target Circle Radius	250.0	pixels
+Outer Target Circle Radius	200.0	pixels
 Target Angle Jitter	0	degrees
 Target Angle Offset	0	degrees
 Monitor Width	15.0	mm
 Monitor X Pixels	1024	pixels
 Monitor Height	15.0	mm
 Monitor Y Pixels	768	pixels
-Min T1_HOLD_1 Time	1.0	s
-Max T1_HOLD_1 Time	1.5	s
-Min T1_HOLD_2 Time	0.75	s
-Max T1_HOLD_2 Time	1.0	s
+Min T1_HOLD_1 Time	0.25	s
+Max T1_HOLD_1 Time	0.5	s
+Min T1_HOLD_2 Time	0.25	s
+Max T1_HOLD_2 Time	0.5	s
 Min INTERTRIAL Time	0.15	s
 Max INTERTRIAL Time	0.15	s
-Fixed GO Limit	0.1	s
-Fixed MOVE Limit	1.25	s
+Fixed GO Limit	0.5	s
+Fixed MOVE Limit	1.5	s
 Fixed OVERSHOOT Limit	0.5	s
 Fixed T2_HOLD_1 Limit	0.5	s
 Fixed REWARD Delay	0.3	s
@@ -49,6 +49,6 @@ Jitter Angular Variance	10.0	degrees
 VMR Rotation Angle	30	degrees
 EMA Alpha	0.1	coeff
 ADC Left	500	bits
-ADC Right	100	bits
-ADC Top	100	bits
-ADC Bottom	500	bits
+ADC Right	180	bits
+ADC Top	120	bits
+ADC Bottom	575	bits

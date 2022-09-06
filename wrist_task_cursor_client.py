@@ -19,7 +19,7 @@ async def publisher(s, uri):
             x, y = vals.split(',')
             data = {'event': 'cursor', 'x': int(x), 'y': int(y)}
             await websocket.send(json.dumps(data))
-        except websockets.ConnectionClosed:
+        except (websockets.ConnectionClosed, websockets.exceptions.ConnectionClosedOK, websockets.ConnectionClosedError):
             print("WS Connection Back-Pressure: Using New Websocket.")
             continue
                 

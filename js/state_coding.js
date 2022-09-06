@@ -1,3 +1,4 @@
+const validModes = ["standard", "jitter", "homing", "vmr"];
 const pars = {
   BaselineTrials: 5, // Total # baseline trials
   PerturbationTrials: 5, // Total # perturbation trials
@@ -7,13 +8,13 @@ const pars = {
   TargetSize: 20, // pixels, radius
   CursorSize: 5, // pixels, radius
   JitterAngularVar: 10.0, // degrees (variance)
-  Mode: ["Standard", "Jitter", "Homing", "VMR"], // modified "modes" for task to run in
+  Mode: validModes[0], // modified "modes" for task to run in
   T1_Hold_1: 500.0, 
   T1_Hold_2: 750.0,
   T2_Hold_1: 500.0,
-  Move: 1000.0,
-  Overshoot: 250.0, 
-  React: 100.0, 
+  Move: 2000.0,
+  Overshoot: 450.0, 
+  React: 450.0, 
   Alpha: 0.1, // EMA coefficient
   Beta: 0.9, // 1 - EMA coefficient
   ADC: {
@@ -111,10 +112,8 @@ function initData() {
 // Begin a new trial
 function newTrial() {
   if (state.direction === "out") {
-    console.log(updated_target_index);
+    console.log("New Target Index: ", updated_target_index);
     state.target = updated_target_index;
-  } else {
-    ws_tgt.send(JSON.stringify({event: 'get', type: 'none'}));
   }
   if (state.numSuccessful > pars.BaselineTrials + pars.PerturbationTrials + pars.WashoutTrials) {
     endSession(); // If too many trials, end the session.
@@ -249,52 +248,52 @@ function trial_was_successful() {
 }
 
 function trial_was_unsuccessful(h) {
-  state.taskState = "pre";
+  // state.taskState = "pre";
   baseGraphics("orange", false);
   drawCursor(h.x, h.y, "white");
   newTrial();
 }
 
 function indicate_in_t1_hold_1(h) {
-  state.taskState = "t1_hold_1";
+  // state.taskState = "t1_hold_1";
   baseGraphics("cyan", false);
   drawCursor(h.x, h.y, "gold");
 }
 
 function indicate_in_t1_hold_2(h) {
-  state.taskState = "t1_hold_2";
-  baseGraphics("cyan", false);
-  drawCursor(h.x, h.y, "dodgerblue");
+  // state.taskState = "t1_hold_2";
+  baseGraphics("cyan", true);
+  drawCursor(h.x, h.y, "blue");
 }
 
 function indicate_in_go(h) {
-  state.taskState = "go";
+  // state.taskState = "go";
   baseGraphics("black", false);
-  drawCursor(h.x, h.y, "dodgerblue");
+  drawCursor(h.x, h.y, "blue");
 }
 
 function indicate_in_move(h) {
-  state.taskState = "move";
+  // state.taskState = "move";
   baseGraphics("black", false);
-  drawCursor(h.x, h.y, "dodgerblue");
+  drawCursor(h.x, h.y, "blue");
 }
 
 function indicate_in_t2_hold_1(h) {
-  state.taskState = "t2_hold_1";
-  baseGraphics("black", true);
+  // state.taskState = "t2_hold_1";
+  baseGraphics("black", false);
   drawCursor(h.x, h.y, "gold");
 }
 
 function indicate_in_overshoot(h) {
-  state.taskState = "overshoot";
+  // state.taskState = "overshoot";
   baseGraphics("black", false);
   drawCursor(c.x, c.y, "red");
 }
 
 function indicate_in_success(h) {
-  state.taskState = "success";
+  // state.taskState = "success";
   baseGraphics("black", false);
-  drawCursor(c.x, c.y, "blue");
+  drawCursor(c.x, c.y, "white");
 }
 
 // Handles rescaling the data based on calibration values
@@ -308,7 +307,8 @@ function handleCalibratedScaling(x, y) {
 // State machine
 function handleState(s, h) {
   // Current state options:
-  // 1. "pre"       : Pre-trial
+  // 0. "idle"      : Paused, etc.
+  // 1. "t1_pre"    : Pre-trial
   // 2. "t1_hold_1" : Holding, in trial onset circle
   // 3. "t1_hold_2" : Still holding, in trial onset circle but now see t2.
   // 4. "go"        : In trial onset circle, cue received
@@ -323,7 +323,7 @@ function handleState(s, h) {
   if (s === "idle") {
     return;
   }
-  if (s === "pre") {
+  if (s === "t1_pre") {
     // 1
     if (startCheck(c.x, c.y)) {
       state.t1Start = getCurrentTime();
@@ -355,8 +355,8 @@ function handleState(s, h) {
     // 3 : Target is holding in t1; t2 has been shown.
     if (getTimeSince(state.t1Start) > (pars.T1_Hold_1+pars.T1_Hold_2)) { // held long enough in t1 to complete t1_hold_2
       if (startCheck(h.x, h.y)) { // and we are still in t1
-        state.moveStart = getCurrentTime();
         indicate_in_go(c);
+        state.moveStart = getCurrentTime();
         return;
       } else { // otherwise we left t1 too early.
         trial_was_unsuccessful(c);
@@ -373,6 +373,7 @@ function handleState(s, h) {
     if (getTimeSince(state.moveStart) > pars.React) { // if we took too long
       if (startCheck(c.x, c.y)) { // if we are still in the start target
         trial_was_unsuccessful(c);
+        console.log("Too slow!");
         return;
       } else { // we left in time
         indicate_in_move(c);
@@ -391,8 +392,8 @@ function handleState(s, h) {
     // 5 : Movement that has not yet reached the target.
     if (getTimeSince(state.moveStart) > pars.Move) { // if we are out of time
       if (targetCheck(c.x, c.y)) { // if we hit the target, we're good
-        state.t2Start = getCurrentTime();
         indicate_in_t2_hold_1(c);
+        state.t2Start = getCurrentTime();
         return;
       } else { // otherwise, we have failed.
         trial_was_unsuccessful(c);
@@ -400,8 +401,8 @@ function handleState(s, h) {
       }
     } else {
       if (targetCheck(c.x, c.y)) { // We hit the target, we're good
-        state.t2Start = getCurrentTime();
         indicate_in_t2_hold_1(c);
+        state.t2Start = getCurrentTime();
         return;
       } else { // otherwise we are still in MOVE
         indicate_in_move(c);
@@ -414,19 +415,17 @@ function handleState(s, h) {
     if (getTimeSince(state.t2Start) > pars.T2_Hold_1) {
       if (targetCheck(c.x, c.y)) {
         // cursor stayed in the target long enough for success.
-        state.taskState = "success";
-        baseGraphics("black", false);
-        drawCursor(c.x, c.y, "white");
+        indicate_in_success(c);
       } else {
-        state.overshootStart = getCurrentTime();
         state.numOvershoots += 1;
         indicate_in_overshoot(c);
+        state.overshootStart = getCurrentTime();
       }
     } else if (targetCheck(c.x, c.y) === false) {
       // cursor LEFT the target. indicate OVERSHOOT
-      state.overshootStart = getCurrentTime();
       state.numOvershoots += 1;
       indicate_in_overshoot(c);
+      state.overshootStart = getCurrentTime();
       return;
     } else { // otherwise still holding t2_hold_1
       indicate_in_t2_hold_1(c);
@@ -436,8 +435,8 @@ function handleState(s, h) {
     // 7 : Cursor has overshot the target
     if (getTimeSince(state.overshootStart) > pars.Overshoot) { // if we are out of time
       if (targetCheck(c.x, c.y)) { // if we hit the target, we're good
-        state.t2Start = getCurrentTime();
         indicate_in_t2_hold_1(c);
+        state.t2Start = getCurrentTime();
         return;
       } else { // otherwise, we have failed.
         trial_was_unsuccessful(c);
@@ -445,8 +444,8 @@ function handleState(s, h) {
       }
     } else {
       if (targetCheck(c.x, c.y)) { // We hit the target, we're good
-        state.t2Start = getCurrentTime();
         indicate_in_t2_hold_1(c);
+        state.t2Start = getCurrentTime();
         return;
       } else { // otherwise we are still in MOVE
         indicate_in_overshoot(c);
@@ -688,7 +687,6 @@ const event_data = {
 };
 
 const ws_xy = new WebSocket(`ws://${address.cursor}:${port.cursor}/`);
-// const ws_tgt = new WebSocket(`ws://${address.target}:${port.target}/`);
 
 ws_xy.onmessage = function (event) {
     let packet = JSON.parse(event.data);
@@ -702,14 +700,15 @@ ws_xy.onmessage = function (event) {
             handleState(state.taskState, data);
             break;
         case 'cursor':
-            // let scaled_data = handleCalibratedScaling(packet.x, packet.y);
-            // event_data.x = pars.Alpha * scaled_data.x + pars.Beta * event_data.x;
-            // event_data.y = pars.Alpha * scaled_data.y + pars.Beta * event_data.y;
-            // console.log(packet)
-            handleState(state.taskState, {x: packet.y, y: packet.x});
+          if (state.running) {
+            state.taskState = packet.state;
+            // console.log(packet);
+            handleState(state.taskState, {x: packet.x, y: packet.y});
+          }
+            
             break;
         case 'tgt': 
-            console.log(packet);
+            // console.log(packet);
             updated_target_index = packet['tgt'];
             break;
         case 'state':
@@ -724,18 +723,3 @@ ws_xy.onmessage = function (event) {
             break;
       }
   };
-
-  // ws_tgt.onmessage = function (event) {
-  //   let packet = JSON.parse(event.data);
-  //   switch (packet.type) {
-  //       case 'tgt': 
-  //           console.log(packet);
-  //           updated_target_index = packet['tgt'];
-  //           break;
-  //       case 'none':
-  //           break;
-  //       default:
-  //           console.error("unsupported event", data);
-  //           break;
-  //     }
-  // };

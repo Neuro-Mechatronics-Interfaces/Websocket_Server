@@ -59,10 +59,11 @@ class CenterOut(object):
 
     # Define transitions between the game states
     transitions = [
-        {'trigger': 'begin', 'source': TaskState.idle, 'dest': TaskState.t1_pre, 'before': 'announce_leaving', 'after': 'announce_entering'},
+        {'trigger': 'start', 'source': TaskState.idle, 'dest': TaskState.t1_pre, 'before': 'announce_leaving', 'after': 'announce_entering'},
         {'trigger': 'resume', 'source': TaskState.idle, 'dest': TaskState.t1_pre, 'before':'announce_leaving', 'after':'announce_entering'},
         {'trigger': 'pause', 'source':'*', 'dest': TaskState.idle, 'before':'announce_leaving', 'after':'announce_entering'},
-        {'trigger': 'end', 'source':'*', 'dest': TaskState.idle, 'before':'announce_leaving', 'after':'announce_entering'},
+        {'trigger': 'stop', 'source':'*', 'dest': TaskState.idle, 'before':'announce_leaving', 'after':'announce_entering'},
+        {'trigger': 'reset', 'source': '*', 'dest': TaskState.t1_pre, 'before': 'announce_leaving_reset', 'after':'announce_entering'}, 
         {'trigger': 'enter_t1', 'source': TaskState.t1_pre, 'dest': TaskState.t1_hold_1, 'before':'announce_leaving', 'after':'announce_entering'}, 
         {'trigger': 'leave_t1', 'source': TaskState.t1_hold_1, 'dest': TaskState.t1_pre, 'before':'announce_leaving', 'after':'announce_entering'},
         {'trigger': 'instruct', 'source': TaskState.t1_hold_1, 'dest': TaskState.t1_hold_2, 'before':'announce_leaving', 'after':'announce_entering'}, 
@@ -81,7 +82,7 @@ class CenterOut(object):
         '''Constructor for CenterOut object.'''
         import logging
         self.logging = logging
-        self.logging.basicConfig(filename='example.log', filemode='w', level=logging.DEBUG, format='%(asctime)s::CENTER-OUT::%(levelname)s::%(message)s')
+        self.logging.basicConfig(filename='example.log', filemode='w', level=logging.INFO, format='%(asctime)s::CENTER-OUT::%(levelname)s::%(message)s')
         self.w = 1200 # see .canvas in css/main.css --> this is width
         self.h = 800  # see .canvas in css/main.css --> this is height
         self.x = 600  # see .canvas in css/main.css --> this is half of height
@@ -113,38 +114,38 @@ class CenterOut(object):
         self.target = next(self._target)
         self.direction = [TaskDirection.IN, TaskDirection.OUT]
 
-    def check_state(self):
+    async def check_state(self):
         """ Runs the state machine for the game. """
         s = self.state.name
         if s == 'idle': # Do nothing.
             pass
         elif s == 't1_pre': # Check to see if we have hit T1.
             if self.in_t1():
-                self.enter_t1() # Advances state to t1_hold_1
+                await self.enter_t1() # Advances state to t1_hold_1
 
         elif s == 't1_hold_1': # Check if we haven't left T1 yet (advance state to t1_hold_2 on timeout)
             if not self.in_t1():
-                self.leave_t1() # Failure, but not counted as such (too early in trial).
+                await self.leave_t1() # Failure, but not counted as such (too early in trial).
 
         elif s == 't1_hold_2': # Check if we haven't left T1 yet (advance state to go on timeout)
             if not self.in_t1():
-                self.fail()  
+                await self.fail()  
 
         elif s == 'go': # Check if we have left T1 yet (fails on timeout)
             if not self.in_t1():
-                self.react()  # Advances state to move
+                await self.react()  # Advances state to move
 
         elif s == 'move': # Check to see if we have hit T2 yet (fails on timeout)
             if self.in_t2():
-                self.enter_t2() # Advances state to t2_hold_1
+                await self.enter_t2() # Advances state to t2_hold_1
 
         elif s == 't2_hold_1': # Check that we have not left T2 yet (advances on timeout)
             if not self.in_t2():
-                self.overshoot() # Advances state to overshoot
+                await self.overshoot() # Advances state to overshoot
 
         elif s == 'overshoot': # Check to see if we went back into T2 (fails on timeout)
             if self.in_t2():
-                self.enter_t2() # Advances state to t2_hold_1
+                await self.enter_t2() # Advances state to t2_hold_1
 
         elif s == 'reward': # Do nothing.
             pass
@@ -211,8 +212,15 @@ class CenterOut(object):
             self.machine.states[TaskState.t1_hold_2.name].timeout = randomize(self.p['Min T1_HOLD_2 Time'], self.p['Max T1_HOLD_2 Time'])
 
     def announce_leaving_on_overshoot(self):
-        self.n['overshoots'] += 1
+        self.n.overshoots += 1
         self.logging.info(f"LEFT::{self.state.name}::OVERSHOOTS={self.n.overshoots}")
+
+    def announce_leaving_reset(self):
+        self.n.overshoots = 0
+        self.n.total = 0
+        self.n.successful = 0
+        self.n.unsuccessful = 0
+        self.logging.info(f"LEFT::{self.state.name}::RESET")
 
     def announce_entering(self):
         self.logging.info(f'ENTERED::{self.state.name}::')
@@ -299,15 +307,25 @@ class CenterOut(object):
                     self.y = ema(self.p['EMA Alpha'], 
                                     linear_map(data["y"], self.p['ADC Bottom'], self.p['ADC Top'], 0, self.h), 
                                     self.y)
-                    self.check_state()
+                    await self.check_state()
                     await self.notify_cursor()
                 elif data["event"] == "params":
                     self.update_parameters(data["filename"])
                     await self.notify_params()
                 elif data["event"] == "targets":
                     self.update_targets(data["filename"])
-        except websockets.exceptions.ConnectionClosedOK:
-            self.logging.info('CLOSED::WS::OK')
+                elif data["event"] == "start":
+                    await self.start()
+                elif data["event"] == "pause":
+                    await self.pause()
+                elif data["event"] == "stop":
+                    await self.stop()
+                elif data["event"] == "reset":
+                    await self.reset()
+                elif data["event"] == "resume":
+                    await self.resume()
+        except (websockets.ConnectionClosed, websockets.exceptions.ConnectionClosedOK, websockets.ConnectionClosedError):
+            self.logging.debug('CLOSED::WS::OK')
         finally:
             await self.unregister(websocket)
 

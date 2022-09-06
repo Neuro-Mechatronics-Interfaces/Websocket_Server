@@ -17,6 +17,8 @@ if __name__ == "__main__":
         p_file = 'config/params.txt'
 
     game = CenterOut(targets_file = 'config/targets.txt', params_file = 'config/params.txt')
+    with open('state_machine.png', 'bw') as f:
+        game.get_graph().draw(f, format='png', prog='dot')
     server = websockets.serve(game.cursor_and_task_state_messages, 
                             address['cursor'], 
                             port['cursor'])
