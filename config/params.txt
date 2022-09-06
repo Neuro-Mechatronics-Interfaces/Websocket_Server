@@ -48,7 +48,7 @@ N Trials Washout	5	trials
 Jitter Angular Variance	10.0	degrees
 VMR Rotation Angle	30	degrees
 EMA Alpha	0.1	coeff
-ADC Left	700	bits
-ADC Right	0	bits
-ADC Top	0	bits
-ADC Bottom	800	bits
+ADC Left	500	bits
+ADC Right	100	bits
+ADC Top	100	bits
+ADC Bottom	500	bits
