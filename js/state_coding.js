@@ -254,6 +254,11 @@ function trial_was_unsuccessful(h) {
   newTrial();
 }
 
+function indicate_in_t1_pre(h) {
+  baseGraphics("orange", false);
+  drawCursor(c.x, c.y, "white");
+}
+
 function indicate_in_t1_hold_1(h) {
   // state.taskState = "t1_hold_1";
   baseGraphics("cyan", false);
@@ -315,9 +320,9 @@ function handleState(s, h) {
   // 5. "move"      : Moving to target (outside onset circle)
   // 6. "t2_hold_1" : Inside the target circle
   // 7. "overshoot" : Already went to "5" on this trial and now outside target
-  // 8. "success"   : Successfully completed the trial.
+  // 8. "reward"    : Successfully completed the trial.
 
-  console.log(s);
+  // console.log(s);
   let c = h;  // we can also make c be the "rotated" data or whatever (TODO)
   appendData(c.x, c.y, h.x, h.y);
   if (s === "idle") {
@@ -325,142 +330,149 @@ function handleState(s, h) {
   }
   if (s === "t1_pre") {
     // 1
-    if (startCheck(c.x, c.y)) {
-      state.t1Start = getCurrentTime();
-      indicate_in_t1_hold_1(c);
-      return;
-    } else {
-      baseGraphics("orange", false);
-      drawCursor(c.x, c.y, "white");
-      return;
-    }
+    // if (startCheck(c.x, c.y)) {
+    //   state.t1Start = getCurrentTime();
+    //   indicate_in_t1_hold_1(c);
+    //   return;
+    // } else {
+    //   baseGraphics("orange", false);
+    //   drawCursor(c.x, c.y, "white");
+    //   return;
+    // }
   } else if (s === "t1_hold_1") {
     // 2 : Target is holding in t1
-    if (getTimeSince(state.t1Start) > pars.T1_Hold_1) { // held long enough in t1 to complete t1_hold_1
-      if (startCheck(c.x, c.y)) { // and we are still in t1
-        indicate_in_t1_hold_2(c);
-        return;
-      } else { // otherwise we left t1 too early.
-        trial_was_unsuccessful(c);
-        return;
-      }
-    } else if (startCheck(h.x, h.y) === false) { // moved out of t1
-      trial_was_unsuccessful(c);
-      return;
-    } else { // otherwise we are still waiting in t1_hold_1
-      indicate_in_t1_hold_1(c);
-      return;
-    }
+    indicate_in_t1_hold_1(c);
+    // if (getTimeSince(state.t1Start) > pars.T1_Hold_1) { // held long enough in t1 to complete t1_hold_1
+    //   if (startCheck(c.x, c.y)) { // and we are still in t1
+    //     indicate_in_t1_hold_2(c);
+    //     return;
+    //   } else { // otherwise we left t1 too early.
+    //     trial_was_unsuccessful(c);
+    //     return;
+    //   }
+    // } else if (startCheck(h.x, h.y) === false) { // moved out of t1
+    //   trial_was_unsuccessful(c);
+    //   return;
+    // } else { // otherwise we are still waiting in t1_hold_1
+    //   indicate_in_t1_hold_1(c);
+    //   return;
+    // }
   } else if (s === "t1_hold_2") {
     // 3 : Target is holding in t1; t2 has been shown.
-    if (getTimeSince(state.t1Start) > (pars.T1_Hold_1+pars.T1_Hold_2)) { // held long enough in t1 to complete t1_hold_2
-      if (startCheck(h.x, h.y)) { // and we are still in t1
-        indicate_in_go(c);
-        state.moveStart = getCurrentTime();
-        return;
-      } else { // otherwise we left t1 too early.
-        trial_was_unsuccessful(c);
-        return;
-      }
-    } else if (startCheck(h.x, h.y) === false) { // we moved out of t1 too early
-      trial_was_unsuccessful(c);
-      return;
-    } else { // otherwise we are still waiting in t1_hold_2
-      indicate_in_t1_hold_2(c);
-    }
+    indicate_in_t1_hold_2(c);
+    // if (getTimeSince(state.t1Start) > (pars.T1_Hold_1+pars.T1_Hold_2)) { // held long enough in t1 to complete t1_hold_2
+    //   if (startCheck(h.x, h.y)) { // and we are still in t1
+    //     indicate_in_go(c);
+    //     state.moveStart = getCurrentTime();
+    //     return;
+    //   } else { // otherwise we left t1 too early.
+    //     trial_was_unsuccessful(c);
+    //     return;
+    //   }
+    // } else if (startCheck(h.x, h.y) === false) { // we moved out of t1 too early
+    //   trial_was_unsuccessful(c);
+    //   return;
+    // } else { // otherwise we are still waiting in t1_hold_2
+    //   indicate_in_t1_hold_2(c);
+    // }
   } else if (s === "go") {
     // 4 : (Transition) Go-Cue has been observed.
-    if (getTimeSince(state.moveStart) > pars.React) { // if we took too long
-      if (startCheck(c.x, c.y)) { // if we are still in the start target
-        trial_was_unsuccessful(c);
-        console.log("Too slow!");
-        return;
-      } else { // we left in time
-        indicate_in_move(c);
-        return;
-      }
-    } else {
-      if (startCheck(c.x, c.y)) { // if we are still in the start target
-        indicate_in_go(c);
-        return;
-      } else { // we left in time
-        indicate_in_move(c);
-        return;
-      }
-    }
+    indicate_in_move(c);
+    // if (getTimeSince(state.moveStart) > pars.React) { // if we took too long
+    //   if (startCheck(c.x, c.y)) { // if we are still in the start target
+    //     trial_was_unsuccessful(c);
+    //     console.log("Too slow!");
+    //     return;
+    //   } else { // we left in time
+    //     indicate_in_move(c);
+    //     return;
+    //   }
+    // } else {
+    //   if (startCheck(c.x, c.y)) { // if we are still in the start target
+    //     indicate_in_go(c);
+    //     return;
+    //   } else { // we left in time
+    //     indicate_in_move(c);
+    //     return;
+    //   }
+    // }
   } else if (s === "move") {
     // 5 : Movement that has not yet reached the target.
-    if (getTimeSince(state.moveStart) > pars.Move) { // if we are out of time
-      if (targetCheck(c.x, c.y)) { // if we hit the target, we're good
-        indicate_in_t2_hold_1(c);
-        state.t2Start = getCurrentTime();
-        return;
-      } else { // otherwise, we have failed.
-        trial_was_unsuccessful(c);
-        return;
-      }
-    } else {
-      if (targetCheck(c.x, c.y)) { // We hit the target, we're good
-        indicate_in_t2_hold_1(c);
-        state.t2Start = getCurrentTime();
-        return;
-      } else { // otherwise we are still in MOVE
-        indicate_in_move(c);
-        return;
-      }
-    }
+    indicate_in_move(c);
+    // if (getTimeSince(state.moveStart) > pars.Move) { // if we are out of time
+    //   if (targetCheck(c.x, c.y)) { // if we hit the target, we're good
+    //     indicate_in_t2_hold_1(c);
+    //     state.t2Start = getCurrentTime();
+    //     return;
+    //   } else { // otherwise, we have failed.
+    //     trial_was_unsuccessful(c);
+    //     return;
+    //   }
+    // } else {
+    //   if (targetCheck(c.x, c.y)) { // We hit the target, we're good
+    //     indicate_in_t2_hold_1(c);
+    //     state.t2Start = getCurrentTime();
+    //     return;
+    //   } else { // otherwise we are still in MOVE
+    //     indicate_in_move(c);
+    //     return;
+    //   }
+    // }
     
   } else if (s === "t2_hold_1") {
     // 6 : Cursor is in the desired target.
-    if (getTimeSince(state.t2Start) > pars.T2_Hold_1) {
-      if (targetCheck(c.x, c.y)) {
-        // cursor stayed in the target long enough for success.
-        indicate_in_success(c);
-      } else {
-        state.numOvershoots += 1;
-        indicate_in_overshoot(c);
-        state.overshootStart = getCurrentTime();
-      }
-    } else if (targetCheck(c.x, c.y) === false) {
-      // cursor LEFT the target. indicate OVERSHOOT
-      state.numOvershoots += 1;
-      indicate_in_overshoot(c);
-      state.overshootStart = getCurrentTime();
-      return;
-    } else { // otherwise still holding t2_hold_1
-      indicate_in_t2_hold_1(c);
-      return;
-    }
+    indicate_in_t2_hold_1(c);
+    // if (getTimeSince(state.t2Start) > pars.T2_Hold_1) {
+    //   if (targetCheck(c.x, c.y)) {
+    //     // cursor stayed in the target long enough for success.
+    //     indicate_in_success(c);
+    //   } else {
+    //     state.numOvershoots += 1;
+    //     indicate_in_overshoot(c);
+    //     state.overshootStart = getCurrentTime();
+    //   }
+    // } else if (targetCheck(c.x, c.y) === false) {
+    //   // cursor LEFT the target. indicate OVERSHOOT
+    //   state.numOvershoots += 1;
+    //   indicate_in_overshoot(c);
+    //   state.overshootStart = getCurrentTime();
+    //   return;
+    // } else { // otherwise still holding t2_hold_1
+    //   indicate_in_t2_hold_1(c);
+    //   return;
+    // }
   } else if (s === "overshoot") {
     // 7 : Cursor has overshot the target
-    if (getTimeSince(state.overshootStart) > pars.Overshoot) { // if we are out of time
-      if (targetCheck(c.x, c.y)) { // if we hit the target, we're good
-        indicate_in_t2_hold_1(c);
-        state.t2Start = getCurrentTime();
-        return;
-      } else { // otherwise, we have failed.
-        trial_was_unsuccessful(c);
-        return;
-      }
-    } else {
-      if (targetCheck(c.x, c.y)) { // We hit the target, we're good
-        indicate_in_t2_hold_1(c);
-        state.t2Start = getCurrentTime();
-        return;
-      } else { // otherwise we are still in MOVE
-        indicate_in_overshoot(c);
-        return;
-      }
-    }
-  } else if (s === "success") {
+    indicate_in_overshoot(c);
+    // if (getTimeSince(state.overshootStart) > pars.Overshoot) { // if we are out of time
+    //   if (targetCheck(c.x, c.y)) { // if we hit the target, we're good
+    //     indicate_in_t2_hold_1(c);
+    //     state.t2Start = getCurrentTime();
+    //     return;
+    //   } else { // otherwise, we have failed.
+    //     trial_was_unsuccessful(c);
+    //     return;
+    //   }
+    // } else {
+    //   if (targetCheck(c.x, c.y)) { // We hit the target, we're good
+    //     indicate_in_t2_hold_1(c);
+    //     state.t2Start = getCurrentTime();
+    //     return;
+    //   } else { // otherwise we are still in MOVE
+    //     indicate_in_overshoot(c);
+    //     return;
+    //   }
+    // }
+  } else if (s === "reward") {
     // 8 : (Transition) Trial completed successfully.
-    trial_was_successful();
-    endTrial();
-    return;
+    indicate_in_success(c);
+    // trial_was_successful();
+    // endTrial();
+    // return;
   } else {
     throw "Invalid state: '" + s + "'!";
   }
-  appendData(h.x, h.y, c.x, c.y);
+  // appendData(h.x, h.y, c.x, c.y);
 }
 
 // Collect data helper function -- append data to arrays for each timestep
@@ -702,6 +714,8 @@ ws_xy.onmessage = function (event) {
         case 'cursor':
           if (state.running) {
             state.taskState = packet.state;
+            state.direction = packet.direction;
+            state.target = packet.target;
             // console.log(packet);
             handleState(state.taskState, {x: packet.x, y: packet.y});
           }

@@ -81,6 +81,8 @@ class CenterOut(object):
     def __init__(self, targets_file: str = '../config/targets.txt', params_file: str = '../config/params.json'):
         '''Constructor for CenterOut object.'''
         import logging
+        logging.getLogger("websockets").addHandler(logging.NullHandler())
+        logging.getLogger("websockets").propagate = False
         self.logging = logging
         self.logging.basicConfig(filename='example.log', filemode='w', level=logging.INFO, format='%(asctime)s::CENTER-OUT::%(levelname)s::%(message)s')
         self.w = 1200 # see .canvas in css/main.css --> this is width
@@ -248,7 +250,7 @@ class CenterOut(object):
         return json.dumps({"event": "none", "type": "users", "count": len(self._users)})
 
     def cursor_event(self):
-        return json.dumps({"event": "none", "type": "cursor", "x": int(self.x), "y": int(self.y), "target": self.target, "state": self.state.name})
+        return json.dumps({"event": "none", "type": "cursor", "x": int(self.x), "y": int(self.y), "target": self.target, "state": self.state.name, "direction": str(self.direction[1].name).lower()})
 
     def params_event(self):
         return json.dumps({
