@@ -12,14 +12,14 @@ IP = address['cursor']
 PORT = port['cursor']
 
 async def publisher(s, uri):
-    async for websocket in websockets.connect(uri, ping_interval=1.0, ping_timeout=1.0):
+    async for websocket in websockets.connect(uri, ping_interval=20.0, ping_timeout=0.25):
         try:
             line = s.readline()
             vals = line.decode()
             x, y = vals.split(',')
-            data = {'event': 'cursor', 'x': int(x), 'y': int(y)}
+            data = {'event': 'cursor', 'type': 'none', 'x': int(x), 'y': int(y)}
             await websocket.send(json.dumps(data))
-        except (websockets.ConnectionClosed, websockets.exceptions.ConnectionClosedOK, websockets.ConnectionClosedError):
+        except (websockets.ConnectionClosed, websockets.ConnectionClosedOK, websockets.ConnectionClosedError):
             print("WS Connection Back-Pressure: Using New Websocket.")
             continue
                 
