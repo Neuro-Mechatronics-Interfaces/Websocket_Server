@@ -164,14 +164,12 @@ class CenterOut(object):
             self.target = next(self._target)
         else:
             self.direction = [TaskDirection.OUT, TaskDirection.IN]
-        self.announce_entering()
 
     def count_bad(self):
         """ Increment unsuccessful and total trial counters. """
         self.n['unsuccessful'] += 1
         self.n['total'] += 1
         self.n['overshoots'] = 0
-        self.announce_entering()
 
     def in_t1(self) -> bool:
         """ Check if cursor is in primary target. """
