@@ -12,7 +12,7 @@ IP = address['cursor']
 PORT = port['cursor']
 
 async def publisher(s, uri):
-    async for websocket in websockets.connect(uri, ping_interval=0.020, ping_timeout=0.010):
+    async for websocket in websockets.connect(uri, ping_interval=None, ping_timeout=0.020):
         try:
             task = asyncio.create_task(ping(websocket))
             while True:
