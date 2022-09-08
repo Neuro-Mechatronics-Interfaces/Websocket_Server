@@ -17,10 +17,10 @@ Monitor Width	15.0	mm
 Monitor X Pixels	1024	pixels
 Monitor Height	15.0	mm
 Monitor Y Pixels	768	pixels
-Min T1_HOLD_1 Time	0.25	s
-Max T1_HOLD_1 Time	0.5	s
-Min T1_HOLD_2 Time	0.25	s
-Max T1_HOLD_2 Time	0.5	s
+Min T1_HOLD_1 Time	0.5	s
+Max T1_HOLD_1 Time	0.75	s
+Min T1_HOLD_2 Time	0.5	s
+Max T1_HOLD_2 Time	0.75	s
 Min INTERTRIAL Time	0.15	s
 Max INTERTRIAL Time	0.15	s
 Fixed GO Limit	0.5	s

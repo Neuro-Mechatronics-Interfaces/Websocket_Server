@@ -160,7 +160,7 @@ class CenterOut(object):
         self.n['successful'] += 1
         self.n['total'] += 1
         self.n['overshoots'] = 0
-        if self.n.successful % 2 == 0:
+        if self.n['successful'] % 2 == 0:
             self.direction = [TaskDirection.IN, TaskDirection.OUT]
             self.target = next(self._target)
         else:
