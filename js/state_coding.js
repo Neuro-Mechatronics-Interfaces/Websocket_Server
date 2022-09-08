@@ -261,7 +261,7 @@ function indicate_in_t1_pre(h) {
 
 function indicate_in_t1_hold_1(h) {
   // state.taskState = "t1_hold_1";
-  baseGraphics("cyan", false);
+  baseGraphics("cyan", true);
   drawCursor(h.x, h.y, "gold");
 }
 
@@ -285,7 +285,7 @@ function indicate_in_move(h) {
 
 function indicate_in_t2_hold_1(h) {
   // state.taskState = "t2_hold_1";
-  baseGraphics("black", false);
+  baseGraphics("cyan", true);
   drawCursor(h.x, h.y, "gold");
 }
 
@@ -295,8 +295,8 @@ function indicate_in_overshoot(h) {
   drawCursor(c.x, c.y, "red");
 }
 
-function indicate_in_success(h) {
-  // state.taskState = "success";
+function indicate_in_reward(h) {
+  // state.taskState = "reward";
   baseGraphics("black", false);
   drawCursor(c.x, c.y, "white");
 }
@@ -377,7 +377,7 @@ function handleState(s, h) {
     // }
   } else if (s === "go") {
     // 4 : (Transition) Go-Cue has been observed.
-    indicate_in_move(c);
+    indicate_in_go(c);
     // if (getTimeSince(state.moveStart) > pars.React) { // if we took too long
     //   if (startCheck(c.x, c.y)) { // if we are still in the start target
     //     trial_was_unsuccessful(c);
@@ -465,7 +465,7 @@ function handleState(s, h) {
     // }
   } else if (s === "reward") {
     // 8 : (Transition) Trial completed successfully.
-    indicate_in_success(c);
+    indicate_in_reward(c);
     // trial_was_successful();
     // endTrial();
     // return;

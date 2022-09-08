@@ -59,24 +59,23 @@ class CenterOut(object):
 
     # Define transitions between the game states
     transitions = [
-        {'trigger': 'start', 'source': TaskState.idle, 'dest': TaskState.t1_pre, 'before': 'announce_leaving', 'after': 'announce_entering'},
-        {'trigger': 'resume', 'source': TaskState.idle, 'dest': TaskState.t1_pre, 'before':'announce_leaving', 'after':'announce_entering'},
-        {'trigger': 'pause', 'source':'*', 'dest': TaskState.idle, 'before':'announce_leaving', 'after':'announce_entering'},
-        {'trigger': 'stop', 'source':'*', 'dest': TaskState.idle, 'before':'announce_leaving', 'after':'announce_entering'},
-        {'trigger': 'reset', 'source': '*', 'dest': TaskState.t1_pre, 'before': 'announce_leaving_reset', 'after':'announce_entering'}, 
-        {'trigger': 'enter_t1', 'source': TaskState.t1_pre, 'dest': TaskState.t1_hold_1, 'before':'announce_leaving', 'after':'announce_entering'}, 
-        {'trigger': 'leave_t1', 'source': TaskState.t1_hold_1, 'dest': TaskState.t1_pre, 'before':'announce_leaving', 'after':'announce_entering'},
-        {'trigger': 'instruct', 'source': TaskState.t1_hold_1, 'dest': TaskState.t1_hold_2, 'before':'announce_leaving', 'after':'announce_entering'}, 
-        {'trigger': 'cue', 'source': TaskState.t1_hold_2, 'dest': TaskState.go, 'before':'announce_leaving', 'after':'announce_entering'},
-        {'trigger': 'react', 'source': TaskState.go, 'dest': TaskState.move, 'before':'announce_leaving', 'after':'announce_entering'},
-        {'trigger': 'enter_t2', 'source': TaskState.move, 'dest': TaskState.t2_hold_1, 'before':'announce_leaving', 'after':'announce_entering'}, 
-        {'trigger': 'overshoot', 'source': TaskState.t2_hold_1, 'dest': TaskState.overshoot, 'before':'announce_leaving_on_overshoot', 'after':'announce_entering'}, 
-        {'trigger': 'enter_t2', 'source': TaskState.overshoot, 'dest': TaskState.t2_hold_1, 'before':'announce_leaving', 'after':'announce_entering'}, 
-        {'trigger': 'succeed', 'source': TaskState.t2_hold_1, 'dest': TaskState.reward, 'before':'announce_leaving', 'after':'signal_reward'}, 
-        {'trigger': 'advance', 'source': TaskState.reward, 'dest': TaskState.t1_pre, 'before':'announce_leaving', 'after':'count_good'},
-        {'trigger': 'fail', 'source': '*', 'dest': TaskState.t1_pre, 'before': 'announce_leaving', 'after':'count_bad'}
+        {'trigger': 'start', 'source': TaskState.idle, 'dest': TaskState.t1_pre},
+        {'trigger': 'resume', 'source': TaskState.idle, 'dest': TaskState.t1_pre},
+        {'trigger': 'pause', 'source':'*', 'dest': TaskState.idle},
+        {'trigger': 'stop', 'source':'*', 'dest': TaskState.idle},
+        {'trigger': 'reset', 'source': '*', 'dest': TaskState.t1_pre}, 
+        {'trigger': 'enter_t1', 'source': TaskState.t1_pre, 'dest': TaskState.t1_hold_1, 'before': 'randomize_t1_hold_1'}, 
+        {'trigger': 'leave_t1', 'source': TaskState.t1_hold_1, 'dest': TaskState.t1_pre},
+        {'trigger': 'instruct', 'source': TaskState.t1_hold_1, 'dest': TaskState.t1_hold_2, 'before': 'randomize_t1_hold_2'}, 
+        {'trigger': 'cue', 'source': TaskState.t1_hold_2, 'dest': TaskState.go},
+        {'trigger': 'react', 'source': TaskState.go, 'dest': TaskState.move},
+        {'trigger': 'enter_t2', 'source': TaskState.move, 'dest': TaskState.t2_hold_1}, 
+        {'trigger': 'overshoot', 'source': TaskState.t2_hold_1, 'dest': TaskState.overshoot, 'after': 'increment_overshoot'}, 
+        {'trigger': 'enter_t2', 'source': TaskState.overshoot, 'dest': TaskState.t2_hold_1}, 
+        {'trigger': 'succeed', 'source': TaskState.t2_hold_1, 'dest': TaskState.reward}, 
+        {'trigger': 'advance', 'source': TaskState.reward, 'dest': TaskState.t1_pre, 'after':'count_good'},
+        {'trigger': 'fail', 'source': '*', 'dest': TaskState.t1_pre, 'after':'count_bad'}
     ]
-    
 
     def __init__(self, targets_file: str = '../config/targets.txt', params_file: str = '../config/params.json'):
         '''Constructor for CenterOut object.'''
@@ -202,19 +201,16 @@ class CenterOut(object):
         self.machine.states[TaskState.go.name].timeout = self.p['Fixed GO Limit']
         self.machine.states[TaskState.move.name].timeout = self.p['Fixed MOVE Limit']
         self.machine.states[TaskState.t2_hold_1.name].timeout = self.p['Fixed T2_HOLD_1 Limit']
-        self.machine.states[TaskState.reward.name].timeout = self.p['Fixed REWARD Delay']
+        self.machine.states[TaskState.reward.name].timeout = self.p['Fixed REWARD Delay']            
 
-    def announce_leaving(self):
-        self.logging.info(f'LEFT::{self.state.name}::')
-        # Randomize for next time, in case of t1_hold_1 or t1_hold_2:
-        if self.state.name == 't1_hold_1': 
-            self.machine.states[TaskState.t1_hold_1.name].timeout = randomize(self.p['Min T1_HOLD_1 Time'], self.p['Max T1_HOLD_1 Time'])
-        elif self.state.name == 't1_hold_2':
-            self.machine.states[TaskState.t1_hold_2.name].timeout = randomize(self.p['Min T1_HOLD_2 Time'], self.p['Max T1_HOLD_2 Time'])
+    def randomize_t1_hold_1(self):
+        self.machine.states[TaskState.t1_hold_1.name].timeout = randomize(self.p['Min T1_HOLD_1 Time'], self.p['Max T1_HOLD_1 Time'])
 
-    def announce_leaving_on_overshoot(self):
+    def randomize_t1_hold_2(self):
+        self.machine.states[TaskState.t1_hold_2.name].timeout = randomize(self.p['Min T1_HOLD_2 Time'], self.p['Max T1_HOLD_2 Time'])
+
+    def increment_overshoot(self):
         self.n['overshoots'] += 1
-        self.logging.info(f"LEFT::{self.state.name}::OVERSHOOTS={self.n['overshoots']}")
 
     def announce_leaving_reset(self):
         self.n['overshoots'] = 0
@@ -222,9 +218,6 @@ class CenterOut(object):
         self.n['successful'] = 0
         self.n['unsuccessful'] = 0
         self.logging.info(f"LEFT::{self.state.name}::RESET")
-
-    def announce_entering(self):
-        self.logging.info(f'ENTERED::{self.state.name}::')
 
     def update_parameters(self, fname: str):
         with open(fname, 'r') as f:
