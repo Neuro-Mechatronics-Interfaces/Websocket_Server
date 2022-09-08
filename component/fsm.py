@@ -101,7 +101,6 @@ class CenterOut(object):
                                       states=CenterOut.states, 
                                       transitions=CenterOut.transitions,
                                       initial='idle', 
-                                      ignore_invalid_triggers=True, 
                                       queued=True)
 
         self._t = {
