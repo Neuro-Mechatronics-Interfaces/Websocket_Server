@@ -27,8 +27,7 @@ async def publisher(s, uri):
 
 async def ping(websocket):
     while True:
-        await websocket.send('{"message":"PING"}')
-        print('------ ping')
+        await websocket.send('2')
         await asyncio.sleep(5)
                 
 with serial.Serial('/dev/ttyUSB0', 9600) as ser:
